@@ -1,0 +1,32 @@
+# Build
+/build/
+/cmake-build-*/
+/out/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+compile_commands.json
+
+# IDE / editor
+.idea/
+.vscode/
+.cache/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Compiled
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
+
+# Testing
+Testing/
+CTestTestfile.cmake
+*_tests[._]*

@@ -1,0 +1,35 @@
+# 设计模式笔记
+
+按 GoF 分类记录学习笔记。每个文件对应一个模式，内容由你自己填写。
+
+## 创建型（Creational）
+
+- [Abstract Factory（抽象工厂）](creational/abstract_factory.md)
+- [Builder（建造者）](creational/builder.md)
+- [Factory Method（工厂方法）](creational/factory_method.md)
+- [Prototype（原型）](creational/prototype.md)
+- [Singleton（单例）](creational/singleton.md)
+
+## 结构型（Structural）
+
+- [Adapter（适配器）](structural/adapter.md)
+- [Bridge（桥接）](structural/bridge.md)
+- [Composite（组合）](structural/composite.md)
+- [Decorator（装饰器）](structural/decorator.md)
+- [Facade（外观）](structural/facade.md)
+- [Flyweight（享元）](structural/flyweight.md)
+- [Proxy（代理）](structural/proxy.md)
+
+## 行为型（Behavioral）
+
+- [Chain of Responsibility（责任链）](behavioral/chain_of_responsibility.md)
+- [Command（命令）](behavioral/command.md)
+- [Interpreter（解释器）](behavioral/interpreter.md)
+- [Iterator（迭代器）](behavioral/iterator.md)
+- [Mediator（中介者）](behavioral/mediator.md)
+- [Memento（备忘录）](behavioral/memento.md)
+- [Observer（观察者）](behavioral/observer.md)
+- [State（状态）](behavioral/state.md)
+- [Strategy（策略）](behavioral/strategy.md)
+- [Template Method（模板方法）](behavioral/template_method.md)
+- [Visitor（访问者）](behavioral/visitor.md)

@@ -6,6 +6,7 @@
 
 ## 创建型（Creational）
 
+- [创建型总览](creational/creational_pattern.md)：五种 GoF 对照、C++ 日常创建方式、演进图
 - [Abstract Factory（抽象工厂）](creational/abstract_factory.md)
 - [Builder（建造者）](creational/builder.md)
 - [Factory Method（工厂方法）](creational/factory_method.md)

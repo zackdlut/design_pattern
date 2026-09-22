@@ -44,11 +44,65 @@ classDiagram
 
 | 构件                  | 作用                                            |
 | --------------------- | ----------------------------------------------- |
-| 私有构造 / 析构       | 外面不能`Singleton x;`，也不能随便 `delete` |
+| 私有 / 保护 / 删除构造与析构 | 见下一小节：三种权限管的不是同一件事 |
 | 删除拷贝 / 移动       | 不能通过拷贝再变出第二个                        |
 | 静态`getInstance()` | 唯一合法入口，返回同一份引用                    |
 
-差别只在三件事：**何时创建、如何保证线程安全、何时销毁**。
+### 为什么有的 `private`，Holder 却是 `= delete`
+
+差在一件事：**这个类本身是不是那唯一的对象。**
+
+`Meyers` / `SingletonLasy` / `LazyLock` / `DoubleCheck` / `CallOnce` 的 `getInstance()` 都要在类内部真正造出一个**自己**：
+
+```cpp
+static SingletonMeyers instance_{};     // 要调 SingletonMeyers()
+instance_ = new SingletonLazyLock();    // 要调 SingletonLazyLock()
+```
+
+构造函数必须 **存在**（`= default`），但不能给外面用（`private`）：
+
+| | 外面 `Singleton x;` | 类里的 `getInstance()` |
+|--|---------------------|-------------------------|
+| `public` 构造 | 能，单例被绕开 | 能 |
+| `private` + `= default` | 不能 | **能**（成员函数可以调私有构造） |
+| `= delete` | 不能 | **也不能**，实例造不出来 |
+
+析构同理：Meyers / 饿汉在程序退出时要析构那一个对象，析构函数必须存在，只是不让外面 `delete &getInstance()`，所以也是 `private`，不是 `delete`。
+
+```mermaid
+flowchart LR
+  subgraph 其他单例["类 = 那个唯一实例"]
+    G1[getInstance] -->|类内部调用| C1["private 构造 = default"]
+    C1 --> I1[(一个 Singleton 对象)]
+  end
+```
+
+`SingletonHolder` 相反：`getInstance()` 造的是 `T`，不是 Holder。Holder 自己永远不该有生命周期，构造/析构直接 **`= delete`**，谁都不能造（包括它自己的成员）。
+
+```mermaid
+flowchart LR
+  subgraph Holder["类 ≠ 实例，只是入口"]
+    G2[getInstance] --> I2[(一个 T)]
+    G2 -.->|不要走这条路| H[Holder 对象]
+  end
+```
+
+`SingletonTemplate` 还要让派生类 `Logger` 能初始化基类，所以是 **`protected` + `= default`**。
+
+| | 其他 `Singleton*` | `SingletonHolder<T>` | `SingletonTemplate<T>` |
+|--|-------------------|----------------------|------------------------|
+| 这个类是什么 | 单例对象的类型 | 取 `T` 的工具 | `T` 的基类 |
+| 要不要有「自己的实例」 | 要，恰好一个 | 一个都不要 | 不要基类实例，要派生类实例 |
+| 构造怎么写 | `private` + `= default` | `= delete` | `protected` + `= default` |
+| 原因 | 成员里能造，外面不能造 | 造出来就是误用 | 派生类还要能初始化基类 |
+
+一句话：
+
+- **private + default**：函数还在，只限「自己人」调用（造那一个单例）。
+- **delete**：函数作废，谁都不能调用（Holder 不是实例）。
+- **protected + default**：自己人 + 派生类（CRTP 的 `Logger` 还要调基类构造）。
+
+差别还在三件事：**何时创建、如何保证线程安全、何时销毁**。
 
 ```mermaid
 flowchart TD
@@ -312,12 +366,49 @@ classDiagram
   TemplateDemo --|> SingletonTemplate~TemplateDemo~
 ```
 
-`getInstance()` 构造的是 `static T`，所以：
+`getInstance()` 构造的是 `static T`（对 `Logger` 就是 `Logger{}`），所以：
 
 1. 派生类必须 `friend class SingletonTemplate<T>`，否则基类访问不了私有构造
-2. 派生类构造放 `private`，外面不能 `TemplateDemo x;`
+2. 派生类构造放 `private`，外面不能 `Logger log;`
 3. **不能**给模板加 `final`，否则无法继承
 4. 基类构造/析构必须是 `protected`，派生类才能初始化基类
+
+### 为什么要 `friend` 和 `Logger() = default`
+
+这两行是配对的：一行挡住外面随便造 `Logger`，另一行只把「造 `Logger`」的权限交给模板里的 `getInstance()`。
+
+`getInstance()` 是 **`SingletonTemplate<Logger>` 的成员**，不是 `Logger` 的成员。能调用 `Logger` 私有构造的只有 `Logger` 自己的成员和它声明的 friend。没有 friend，`static T instance{}` 会报构造函数是 private。
+
+```mermaid
+flowchart LR
+  G["SingletonTemplate&lt;Logger&gt;::getInstance()"]
+  C["Logger() 私有构造"]
+  G -->|"不是 Logger 的成员"| X[无权调用]
+  G -->|"friend 之后"| C
+```
+
+如果不写任何构造函数，编译器会生成一个 **public** 默认构造，外面就能 `Logger log;`，单例被绕开。必须自己声明构造函数并放进 `private`。`= default` 表示实现仍用编译器生成的空构造，但**访问权限由你决定**。
+
+```cpp
+class Logger : public SingletonTemplate<Logger> {
+  friend class SingletonTemplate<Logger>;  // 只允许模板内部构造
+  Logger() = default;                      // 声明为私有，禁止 Logger log;
+};
+```
+
+| 写法 | 外面 `Logger log;` | `getInstance()` 里 `Logger{}` |
+|------|-------------------|--------------------------------|
+| 不写构造函数 | 能（隐式 public） | 能 |
+| `private: Logger() = default;` 且无 friend | 不能 | **不能** |
+| 两行都写 | 不能 | 能 |
+
+构造 `Logger` 时还会调基类构造。基类构造成 `protected`，派生类的 `Logger()` 才能初始化基类子对象；外面仍然不能直接造 `SingletonTemplate<Logger>`。若基类构造成 `private` 且不 friend 派生类，`Logger()` 自己也会编不过。
+
+三条权限是一套的：
+
+1. **`Logger() = default` 放 private**：禁止 `Logger log;`
+2. **`friend SingletonTemplate<Logger>`**：允许 `getInstance()` 里那句 `static T instance{}`
+3. **基类构造 `protected`**：允许派生类完成基类子对象的构造
 
 ### 用法
 
@@ -358,15 +449,24 @@ flowchart LR
   X[测试里 Database local] -.->|仍然合法| D1
 ```
 
-Holder **不能当对象用**：
+Holder **不能当对象用**。正确用法只有静态函数：
 
 ```cpp
-// 错误：Holder 构造/析构都 = delete
+// 错误：造出来的是 Holder 自己，和那份 Database 无关
 SingletonHolder<Database> x;
 
 // 正确
 auto &db = SingletonHolder<Database>::getInstance();
 ```
+
+| 删掉谁 | 挡住什么 |
+|--------|----------|
+| `SingletonHolder() = delete` | `SingletonHolder<T> x;` 以及 `new SingletonHolder<T>` |
+| `~SingletonHolder() = delete` | 就算用别的手段造出来，局部变量离开作用域时也不能析构 |
+
+两个都删，意图是：**这个类型不允许有生命周期**。放在 `public` 里 `= delete`，误用时会报 “use of deleted function”，比写成 private 更清楚。拷贝/移动一并删除，因为 Holder 不能存在，自然也不能拷、不能移。
+
+这和前面几种单例不同：那些类**就是**唯一实例，构造必须 `private` + `= default`，好让 `getInstance()` 在类内部造出那一个对象。对照见上文「共同骨架」里的权限表。
 
 ### 用法（对应测试 `SingletonHolderReturnsSameInstance`）
 

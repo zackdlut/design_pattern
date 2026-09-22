@@ -13,6 +13,19 @@ using design_pattern::creational::builder::HttpObjectBuilder;
 using design_pattern::creational::builder::HttpRequest;
 using design_pattern::creational::builder::HttpRequestBuilder;
 
+namespace {
+
+void expect_invalid(const char *message, auto &&action) {
+  try {
+    action();
+    FAIL() << "expected std::invalid_argument: " << message;
+  } catch (const std::invalid_argument &error) {
+    EXPECT_STREQ(error.what(), message);
+  }
+}
+
+}  // namespace
+
 TEST(BuilderTest, HttpObjectBuilderBuildsRequest) {
   HttpObjectBuilder builder;
   builder.setMethod("POST");
@@ -116,7 +129,51 @@ TEST(BuilderTest, FluentBuilderDefaultsToGet) {
 }
 
 TEST(BuilderTest, BuildersRejectMissingUrl) {
-  EXPECT_THROW(HttpObjectBuilder{}.build(), std::invalid_argument);
-  EXPECT_THROW(CurlCommandBuilder{}.build(), std::invalid_argument);
-  EXPECT_THROW(HttpRequestBuilder{}.build(), std::invalid_argument);
+  expect_invalid("url is required", [] { HttpObjectBuilder{}.build(); });
+  expect_invalid("url is required", [] { CurlCommandBuilder{}.build(); });
+  expect_invalid("url is required", [] { HttpRequestBuilder{}.build(); });
+}
+
+TEST(BuilderTest, SettersRejectInvalidFields) {
+  expect_invalid("method is required", [] { HttpObjectBuilder{}.setMethod(""); });
+  expect_invalid("unknown HTTP method: FOO",
+                 [] { HttpObjectBuilder{}.setMethod("FOO"); });
+  expect_invalid("url is required", [] { HttpObjectBuilder{}.setUrl(""); });
+  expect_invalid("header name is required",
+                 [] { HttpObjectBuilder{}.setHeader("", "v"); });
+
+  expect_invalid("method is required", [] { CurlCommandBuilder{}.setMethod(""); });
+  expect_invalid("unknown HTTP method: FOO",
+                 [] { CurlCommandBuilder{}.setMethod("FOO"); });
+  expect_invalid("url is required", [] { CurlCommandBuilder{}.setUrl(""); });
+  expect_invalid("header name is required",
+                 [] { CurlCommandBuilder{}.setHeader("", "v"); });
+
+  expect_invalid("method is required",
+                 [] { HttpRequestBuilder{}.method(""); });
+  expect_invalid("unknown HTTP method: FOO",
+                 [] { HttpRequestBuilder{}.method("FOO"); });
+  expect_invalid("url is required", [] { HttpRequestBuilder{}.url(""); });
+  expect_invalid("header name is required",
+                 [] { HttpRequestBuilder{}.header("", "v"); });
+}
+
+TEST(BuilderTest, BuildRejectsGetWithBody) {
+  expect_invalid("GET request must not have a body", [] {
+    HttpObjectBuilder builder;
+    builder.setMethod("GET");
+    builder.setUrl("/health");
+    builder.setBody("oops");
+    builder.build();
+  });
+  expect_invalid("GET request must not have a body", [] {
+    CurlCommandBuilder builder;
+    builder.setMethod("GET");
+    builder.setUrl("/health");
+    builder.setBody("oops");
+    builder.build();
+  });
+  expect_invalid("GET request must not have a body", [] {
+    HttpRequestBuilder().method("GET").url("/health").body("oops").build();
+  });
 }

@@ -147,7 +147,30 @@ sequenceDiagram
 
 建造者的职责是把对象装配出来。在头文件里 `#include <iostream>` 会污染所有翻译单元，打印也无法直接断言。`describe()` 返回 `std::string`，测试写 `EXPECT_EQ`，示例再决定要不要打印。
 
-`url` 是必填：三种建造者在 `build()` 时若 URL 为空，都 `throw std::invalid_argument`。`method` 缺省为 `"GET"`，避免为了默认值再写一串构造函数重载——那正是建造者要消掉的望远镜构造。
+### 错误和异常：步骤验字段，`build()` 验成品
+
+两套建造者共用同一份规则，都抛 `std::invalid_argument`。**不在半成品阶段查跨字段不变量**：工位允许先写 method 再写 url。
+
+```mermaid
+flowchart TD
+  S[setMethod / setUrl / setHeader] --> L{这一步自己非法?}
+  L -->|空 method、未知方法、空 url、空头名| E[立刻 throw]
+  L -->|合法| W[写入工位]
+  W --> B[build]
+  B --> C{成品自洽?}
+  C -->|缺 url、GET/HEAD 带 body| E
+  C -->|自洽| P[交出产品]
+```
+
+| 时机 | 检查 | 例子 |
+| ---- | ---- | ---- |
+| 步骤 / 链式 setter | 单字段非法 | `setMethod("FOO")`、`url("")`、`header("", "v")` |
+| `build()` | 缺件或字段互相打架 | 没写 url；`GET` 却有 body |
+| 未调用 `setMethod` / `method()` | 缺省 `"GET"` | 避免为默认值再写一串构造重载 |
+
+`HttpObjectBuilder` / 链式 `HttpRequestBuilder` 的 `build()` 走进 `HttpRequest` 构造函数，由产品自己保证「不可能持有一份非法请求」。`CurlCommandBuilder` 成品是 `std::string`，所以在自己的 `build()` 里跑同一份 `validate_request`。
+
+`Director` 的配方写死了合法步骤，按设计不抛。链式没有导演，漏字段是调用方的事，更容易走到 `throw`。对应测试 `BuildersRejectMissingUrl` / `SettersRejectInvalidFields` / `BuildRejectsGetWithBody`。
 
 ---
 
@@ -179,7 +202,7 @@ flowchart TD
 
 | 位置                                                    | 内容                                                |
 | ------------------------------------------------------- | --------------------------------------------------- |
-| `HttpRequest`                                         | 值类型产品；空 URL 抛异常；空 method 当成 GET       |
+| `HttpRequest`                                         | 值类型产品；构造时再验一遍，空 method 当成 GET |
 | `Builder`                                             | 纯虚步骤，虚析构，删除拷贝 / 移动                   |
 | `HttpObjectBuilder` / `CurlCommandBuilder`          | `final`，实现放在 `.cpp`，各自提供 `build()` |
 | `Director::buildHealthCheck` / `buildLogin` | 非虚，稳定配方                                      |
@@ -233,7 +256,7 @@ director.buildLogin(as_http);
 http.build();  // 取成品仍要具体类型
 ```
 
-拷贝 / 移动已删除，对应测试 `CopyAndMoveAreDeleted`。缺 URL 会抛异常，对应 `BuildersRejectMissingUrl`。
+拷贝 / 移动已删除，对应测试 `CopyAndMoveAreDeleted`。缺 URL、非法 method、GET 带 body 会抛异常，对应 `BuildersRejectMissingUrl` / `SettersRejectInvalidFields` / `BuildRejectsGetWithBody`。
 
 示例 [`examples/creational/builder/main.cpp`](../../examples/creational/builder/main.cpp) 里，登录和健康检查各跑一遍对象 / curl；换 `Builder&` 只换表示，配方不动。
 
@@ -297,7 +320,7 @@ HttpRequest req = HttpRequestBuilder()
                       .build();
 ```
 
-缺 URL 同样 `throw`，对应测试 `BuildersRejectMissingUrl`。只写 URL 时 method 默认 GET，对应 `FluentBuilderDefaultsToGet`。
+缺 URL、空头名、未知 method 同样 `throw`，对应测试 `BuildersRejectMissingUrl` / `SettersRejectInvalidFields`。GET 带 body 在 `build()` 才抛，对应 `BuildRejectsGetWithBody`。只写 URL 时 method 默认 GET，对应 `FluentBuilderDefaultsToGet`。
 
 ### 用法
 

@@ -7,8 +7,39 @@ namespace design_pattern::creational::builder {
 
 namespace {
 
-std::string default_method(std::string method) {
-  return method.empty() ? "GET" : std::move(method);
+std::string require_method(std::string_view method) {
+  if (method.empty()) {
+    throw std::invalid_argument("method is required");
+  }
+  static constexpr const char *kAllowed[] = {"GET", "POST", "PUT", "PATCH",
+                                             "DELETE", "HEAD"};
+  for (const char *allowed : kAllowed) {
+    if (method == allowed) {
+      return std::string(method);
+    }
+  }
+  throw std::invalid_argument("unknown HTTP method: " + std::string(method));
+}
+
+void require_url(std::string_view url) {
+  if (url.empty()) {
+    throw std::invalid_argument("url is required");
+  }
+}
+
+void require_header_name(std::string_view name) {
+  if (name.empty()) {
+    throw std::invalid_argument("header name is required");
+  }
+}
+
+void validate_request(std::string_view method, std::string_view url,
+                      std::string_view body) {
+  require_url(url);
+  if ((method == "GET" || method == "HEAD") && !body.empty()) {
+    throw std::invalid_argument(std::string(method) +
+                                " request must not have a body");
+  }
 }
 
 }  // namespace
@@ -16,11 +47,13 @@ std::string default_method(std::string method) {
 HttpRequest::HttpRequest(std::string method, std::string url,
                          std::vector<std::pair<std::string, std::string>> headers,
                          std::string body)
-    : method_(default_method(std::move(method))), url_(std::move(url)),
+    : method_(method.empty() ? "GET" : std::move(method)), url_(std::move(url)),
       headers_(std::move(headers)), body_(std::move(body)) {
-  if (url_.empty()) {
-    throw std::invalid_argument("url is required");
+  method_ = require_method(method_);
+  for (const auto &[name, value] : headers_) {
+    require_header_name(name);
   }
+  validate_request(method_, url_, body_);
 }
 
 const std::string &HttpRequest::method() const { return method_; }
@@ -50,13 +83,17 @@ std::string HttpRequest::describe() const {
 }
 
 void HttpObjectBuilder::setMethod(std::string_view method) {
-  method_ = default_method(std::string(method));
+  method_ = require_method(method);
 }
 
-void HttpObjectBuilder::setUrl(std::string_view url) { url_ = std::string(url); }
+void HttpObjectBuilder::setUrl(std::string_view url) {
+  require_url(url);
+  url_ = std::string(url);
+}
 
 void HttpObjectBuilder::setHeader(std::string_view name,
                                   std::string_view value) {
+  require_header_name(name);
   headers_.emplace_back(std::string(name), std::string(value));
 }
 
@@ -69,13 +106,17 @@ HttpRequest HttpObjectBuilder::build() const {
 }
 
 void CurlCommandBuilder::setMethod(std::string_view method) {
-  method_ = default_method(std::string(method));
+  method_ = require_method(method);
 }
 
-void CurlCommandBuilder::setUrl(std::string_view url) { url_ = std::string(url); }
+void CurlCommandBuilder::setUrl(std::string_view url) {
+  require_url(url);
+  url_ = std::string(url);
+}
 
 void CurlCommandBuilder::setHeader(std::string_view name,
                                    std::string_view value) {
+  require_header_name(name);
   headers_.emplace_back(std::string(name), std::string(value));
 }
 
@@ -84,9 +125,7 @@ void CurlCommandBuilder::setBody(std::string_view body) {
 }
 
 std::string CurlCommandBuilder::build() const {
-  if (url_.empty()) {
-    throw std::invalid_argument("url is required");
-  }
+  validate_request(method_, url_, body_);
   std::string cmd = "curl -X ";
   cmd += method_;
   cmd += " '";
@@ -120,17 +159,19 @@ void Director::buildLogin(Builder &builder) const {
 }
 
 HttpRequestBuilder &HttpRequestBuilder::method(std::string_view method) {
-  method_ = default_method(std::string(method));
+  method_ = require_method(method);
   return *this;
 }
 
 HttpRequestBuilder &HttpRequestBuilder::url(std::string_view url) {
+  require_url(url);
   url_ = std::string(url);
   return *this;
 }
 
 HttpRequestBuilder &HttpRequestBuilder::header(std::string_view name,
                                                std::string_view value) {
+  require_header_name(name);
   headers_.emplace_back(std::string(name), std::string(value));
   return *this;
 }

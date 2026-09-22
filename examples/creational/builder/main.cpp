@@ -1,6 +1,7 @@
 #include "creational/builder/builder.h"
 
 #include <iostream>
+#include <stdexcept>
 
 using design_pattern::creational::builder::Builder;
 using design_pattern::creational::builder::CurlCommandBuilder;
@@ -60,6 +61,22 @@ int main() {
 
   HttpRequest health = HttpRequestBuilder().url("/health").build();
   std::cout << "  " << health.describe() << "\n";
+
+  std::cout << "\n=== 错误处理：步骤拒绝非法字段，build() 再查跨字段不变量 ===\n";
+  try {
+    HttpObjectBuilder bad;
+    bad.setMethod("GET");
+    bad.setUrl("/health");
+    bad.setBody("oops");
+    (void)bad.build();
+  } catch (const std::invalid_argument &error) {
+    std::cout << "  GoF:    " << error.what() << "\n";
+  }
+  try {
+    (void)HttpRequestBuilder().method("POST").url("").build();
+  } catch (const std::invalid_argument &error) {
+    std::cout << "  fluent: " << error.what() << "\n";
+  }
 
   return 0;
 }

@@ -37,7 +37,7 @@ public:
 
   virtual void setMethod(std::string_view method) = 0;
   virtual void setUrl(std::string_view url) = 0;
-  virtual void addHeader(std::string_view name, std::string_view value) = 0;
+  virtual void setHeader(std::string_view name, std::string_view value) = 0;
   virtual void setBody(std::string_view body) = 0;
 };
 
@@ -45,10 +45,10 @@ class HttpObjectBuilder final : public Builder {
 public:
   void setMethod(std::string_view method) override;
   void setUrl(std::string_view url) override;
-  void addHeader(std::string_view name, std::string_view value) override;
+  void setHeader(std::string_view name, std::string_view value) override;
   void setBody(std::string_view body) override;
 
-  HttpRequest result() const;
+  HttpRequest build() const;
 
 private:
   std::string method_{"GET"};
@@ -61,10 +61,10 @@ class CurlCommandBuilder final : public Builder {
 public:
   void setMethod(std::string_view method) override;
   void setUrl(std::string_view url) override;
-  void addHeader(std::string_view name, std::string_view value) override;
+  void setHeader(std::string_view name, std::string_view value) override;
   void setBody(std::string_view body) override;
 
-  std::string result() const;
+  std::string build() const;
 
 private:
   std::string method_{"GET"};
@@ -75,8 +75,8 @@ private:
 
 class Director {
 public:
-  void constructHealthCheck(Builder &builder) const;
-  void constructLogin(Builder &builder) const;
+  void buildHealthCheck(Builder &builder) const;
+  void buildLogin(Builder &builder) const;
 };
 
 // 对照：链式建造者。客户端自己当导演，没有抽象 Builder / Director。

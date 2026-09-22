@@ -55,7 +55,7 @@ void HttpObjectBuilder::setMethod(std::string_view method) {
 
 void HttpObjectBuilder::setUrl(std::string_view url) { url_ = std::string(url); }
 
-void HttpObjectBuilder::addHeader(std::string_view name,
+void HttpObjectBuilder::setHeader(std::string_view name,
                                   std::string_view value) {
   headers_.emplace_back(std::string(name), std::string(value));
 }
@@ -64,7 +64,7 @@ void HttpObjectBuilder::setBody(std::string_view body) {
   body_ = std::string(body);
 }
 
-HttpRequest HttpObjectBuilder::result() const {
+HttpRequest HttpObjectBuilder::build() const {
   return HttpRequest(method_, url_, headers_, body_);
 }
 
@@ -74,7 +74,7 @@ void CurlCommandBuilder::setMethod(std::string_view method) {
 
 void CurlCommandBuilder::setUrl(std::string_view url) { url_ = std::string(url); }
 
-void CurlCommandBuilder::addHeader(std::string_view name,
+void CurlCommandBuilder::setHeader(std::string_view name,
                                    std::string_view value) {
   headers_.emplace_back(std::string(name), std::string(value));
 }
@@ -83,7 +83,7 @@ void CurlCommandBuilder::setBody(std::string_view body) {
   body_ = std::string(body);
 }
 
-std::string CurlCommandBuilder::result() const {
+std::string CurlCommandBuilder::build() const {
   if (url_.empty()) {
     throw std::invalid_argument("url is required");
   }
@@ -107,15 +107,15 @@ std::string CurlCommandBuilder::result() const {
   return cmd;
 }
 
-void Director::constructHealthCheck(Builder &builder) const {
+void Director::buildHealthCheck(Builder &builder) const {
   builder.setMethod("GET");
   builder.setUrl("/health");
 }
 
-void Director::constructLogin(Builder &builder) const {
+void Director::buildLogin(Builder &builder) const {
   builder.setMethod("POST");
   builder.setUrl("/login");
-  builder.addHeader("Content-Type", "application/json");
+  builder.setHeader("Content-Type", "application/json");
   builder.setBody(R"({"user":"alice","password":"secret"})");
 }
 

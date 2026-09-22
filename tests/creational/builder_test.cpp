@@ -17,10 +17,10 @@ TEST(BuilderTest, HttpObjectBuilderBuildsRequest) {
   HttpObjectBuilder builder;
   builder.setMethod("POST");
   builder.setUrl("/login");
-  builder.addHeader("Authorization", "Bearer token");
+  builder.setHeader("Authorization", "Bearer token");
   builder.setBody(R"({"user":"alice"})");
 
-  HttpRequest request = builder.result();
+  HttpRequest request = builder.build();
   EXPECT_EQ(request.method(), "POST");
   EXPECT_EQ(request.url(), "/login");
   ASSERT_EQ(request.headers().size(), 1U);
@@ -35,10 +35,10 @@ TEST(BuilderTest, CurlCommandBuilderBuildsCurl) {
   CurlCommandBuilder builder;
   builder.setMethod("POST");
   builder.setUrl("/login");
-  builder.addHeader("Authorization", "Bearer token");
+  builder.setHeader("Authorization", "Bearer token");
   builder.setBody(R"({"user":"alice"})");
 
-  EXPECT_EQ(builder.result(),
+  EXPECT_EQ(builder.build(),
             "curl -X POST '/login' -H 'Authorization: Bearer token' "
             "-d '{\"user\":\"alice\"}'");
 }
@@ -47,13 +47,13 @@ TEST(BuilderTest, DirectorConstructsLoginOnBothBuilders) {
   Director director;
   HttpObjectBuilder http;
   CurlCommandBuilder curl;
-  director.constructLogin(http);
-  director.constructLogin(curl);
+  director.buildLogin(http);
+  director.buildLogin(curl);
 
-  EXPECT_EQ(http.result().describe(),
+  EXPECT_EQ(http.build().describe(),
             "POST /login | Content-Type=application/json | "
             "body={\"user\":\"alice\",\"password\":\"secret\"}");
-  EXPECT_EQ(curl.result(),
+  EXPECT_EQ(curl.build(),
             "curl -X POST '/login' -H 'Content-Type: application/json' "
             "-d '{\"user\":\"alice\",\"password\":\"secret\"}'");
 }
@@ -62,11 +62,11 @@ TEST(BuilderTest, DirectorConstructsHealthCheck) {
   Director director;
   HttpObjectBuilder http;
   CurlCommandBuilder curl;
-  director.constructHealthCheck(http);
-  director.constructHealthCheck(curl);
+  director.buildHealthCheck(http);
+  director.buildHealthCheck(curl);
 
-  EXPECT_EQ(http.result().describe(), "GET /health");
-  EXPECT_EQ(curl.result(), "curl -X GET '/health'");
+  EXPECT_EQ(http.build().describe(), "GET /health");
+  EXPECT_EQ(curl.build(), "curl -X GET '/health'");
 }
 
 TEST(BuilderTest, ClientDependsOnBuilderAbstraction) {
@@ -75,12 +75,12 @@ TEST(BuilderTest, ClientDependsOnBuilderAbstraction) {
   CurlCommandBuilder curl;
   Builder &as_http = http;
   Builder &as_curl = curl;
-  director.constructLogin(as_http);
-  director.constructLogin(as_curl);
+  director.buildLogin(as_http);
+  director.buildLogin(as_curl);
 
-  EXPECT_EQ(http.result().method(), "POST");
-  EXPECT_EQ(http.result().url(), "/login");
-  EXPECT_EQ(curl.result().substr(0, 14), "curl -X POST '");
+  EXPECT_EQ(http.build().method(), "POST");
+  EXPECT_EQ(http.build().url(), "/login");
+  EXPECT_EQ(curl.build().substr(0, 14), "curl -X POST '");
 }
 
 TEST(BuilderTest, CopyAndMoveAreDeleted) {
@@ -116,7 +116,7 @@ TEST(BuilderTest, FluentBuilderDefaultsToGet) {
 }
 
 TEST(BuilderTest, BuildersRejectMissingUrl) {
-  EXPECT_THROW(HttpObjectBuilder{}.result(), std::invalid_argument);
-  EXPECT_THROW(CurlCommandBuilder{}.result(), std::invalid_argument);
+  EXPECT_THROW(HttpObjectBuilder{}.build(), std::invalid_argument);
+  EXPECT_THROW(CurlCommandBuilder{}.build(), std::invalid_argument);
   EXPECT_THROW(HttpRequestBuilder{}.build(), std::invalid_argument);
 }

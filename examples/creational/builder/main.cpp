@@ -13,7 +13,7 @@ namespace {
 
 // 客户端只依赖 Builder：换建造者即换表示，配方仍由 Director 固定。
 void assemble_login(Builder &builder, Director &director) {
-  director.constructLogin(builder);
+  director.buildLogin(builder);
 }
 
 }  // namespace
@@ -24,19 +24,19 @@ int main() {
   Director director;
   HttpObjectBuilder login_http;
   CurlCommandBuilder login_curl;
-  director.constructLogin(login_http);
-  director.constructLogin(login_curl);
+  director.buildLogin(login_http);
+  director.buildLogin(login_curl);
   std::cout << "[login]\n";
-  std::cout << "  object: " << login_http.result().describe() << "\n";
-  std::cout << "  curl:   " << login_curl.result() << "\n";
+  std::cout << "  object: " << login_http.build().describe() << "\n";
+  std::cout << "  curl:   " << login_curl.build() << "\n";
 
   HttpObjectBuilder health_http;
   CurlCommandBuilder health_curl;
-  director.constructHealthCheck(health_http);
-  director.constructHealthCheck(health_curl);
+  director.buildHealthCheck(health_http);
+  director.buildHealthCheck(health_curl);
   std::cout << "[health]\n";
-  std::cout << "  object: " << health_http.result().describe() << "\n";
-  std::cout << "  curl:   " << health_curl.result() << "\n";
+  std::cout << "  object: " << health_http.build().describe() << "\n";
+  std::cout << "  curl:   " << health_curl.build() << "\n";
 
   std::cout << "\n=== 同一抽象 Builder&，换具体建造者即换表示 ===\n";
   HttpObjectBuilder as_object;
@@ -45,9 +45,9 @@ int main() {
   Builder &curl_ref = as_curl;
   assemble_login(object_ref, director);
   assemble_login(curl_ref, director);
-  std::cout << "  via Builder& (http object): " << as_object.result().describe()
+  std::cout << "  via Builder& (http object): " << as_object.build().describe()
             << "\n";
-  std::cout << "  via Builder& (curl):        " << as_curl.result() << "\n";
+  std::cout << "  via Builder& (curl):        " << as_curl.build() << "\n";
 
   std::cout << "\n=== 对照：链式建造者，客户端自己当导演 ===\n";
   HttpRequest req = HttpRequestBuilder()

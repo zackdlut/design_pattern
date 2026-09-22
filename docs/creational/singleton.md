@@ -284,6 +284,47 @@ sequenceDiagram
 
 若不用 atomic，可能出现：别的线程看到「指针已经非空」，但对象还没构造完。
 
+### 为什么锁里要用 `relaxed` 再读一次
+
+第二次读是双重检查本身；用 `relaxed` 是因为这时已经在锁里，不需要再靠这次 load 做同步。
+
+两个线程可能同时在锁外看到 `p == nullptr`，一起往锁上挤。先拿到锁的会 `new` 并 `store`。后拿到锁的如果**还用外面读到的那个空指针**，会再 `new` 一次，单例就破了。锁里必须再看一眼「现在指针到底是不是空」——这就是名字里的 Double-Check。
+
+```mermaid
+sequenceDiagram
+  participant A as 线程 A
+  participant B as 线程 B
+  participant M as mutex
+  participant I as instance_
+
+  A->>I: acquire 读到 nullptr
+  B->>I: acquire 读到 nullptr
+  A->>M: 先拿到锁
+  A->>I: new + release store
+  A->>M: 解锁
+  B->>M: 后拿到锁
+  B->>I: 再读一次 → 已经非空
+  Note over B: 不能再用外面那个 nullptr，否则会第二次 new
+```
+
+锁外那次必须是 **acquire**：没加锁，要靠它和构造线程的 **release store** 同步，才能保证「看到指针非空 ⇒ 对象已经构造完」。
+
+锁里这次不一样。`std::mutex::lock()` 本身带 acquire，`unlock()` 带 release。先完成的线程是：
+
+```text
+加锁 → new 对象 → release store 指针 → 解锁
+```
+
+后进锁的线程 `lock()` 会与对方的 `unlock()` 建立 happens-before，因此对方写进对象里的字段、以及对 `instance_` 的 store，都已经可见。这时再 `load` 只是把指针值读出来，**不再承担同步职责**，`memory_order_relaxed` 就够了。写成 `acquire` 也正确，只是多余：锁已经做了同样的同步。
+
+| 位置 | 操作 | 内存序 | 作用 |
+|------|------|--------|------|
+| 锁外 | 第一次 `load` | **acquire** | 快路径：看到非空时，对象内容必须可见 |
+| 锁内 | 第二次 `load` | **relaxed** | 只确认有没有人已经造好，同步交给 mutex |
+| 锁内 | `store` | **release** | 发布指针，给锁外那次 acquire 配对 |
+
+一句话：再读是为了「不要造第二个」；`relaxed` 是因为「同步已经由锁做完了」。
+
 ### 基本构成
 
 - `std::mutex`：保护真正的创建

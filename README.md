@@ -46,7 +46,7 @@ cmake --build build --target examples
 cmake -S . -B build -DDESIGN_PATTERN_BUILD_EXAMPLES=OFF
 ```
 
-未实现的模式在 `examples/` 下只有可编译骨架；`singleton`、`factory_method`、`abstract_factory`、`builder` 和 `prototype` 是真实使用场景。详见 [`examples/README.md`](examples/README.md)。
+未实现的模式在 `examples/` 下只有可编译骨架；`singleton`、`factory_method`、`abstract_factory`、`builder`、`prototype` 和 `adapter` 是真实使用场景。详见 [`examples/README.md`](examples/README.md)。
 
 ## 建议学习顺序
 

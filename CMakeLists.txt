@@ -12,6 +12,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 option(DESIGN_PATTERN_BUILD_TESTS "Build GoogleTest unit tests" ON)
+option(DESIGN_PATTERN_BUILD_EXAMPLES "Build pattern client examples" ON)
 
 file(GLOB_RECURSE DESIGN_PATTERN_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
@@ -36,4 +37,8 @@ endif()
 if(DESIGN_PATTERN_BUILD_TESTS)
     enable_testing()
     add_subdirectory(tests)
+endif()
+
+if(DESIGN_PATTERN_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()

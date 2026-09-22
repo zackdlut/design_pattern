@@ -7,6 +7,7 @@
 - 头文件：[`include/creational/singleton/singleton.h`](../../include/creational/singleton/singleton.h)
 - 实现：[`src/creational/singleton/singleton.cpp`](../../src/creational/singleton/singleton.cpp)
 - 测试：[`tests/creational/singleton_test.cpp`](../../tests/creational/singleton_test.cpp)
+- 客户端：[`examples/creational/singleton/main.cpp`](../../examples/creational/singleton/main.cpp)
 
 ## 意图
 

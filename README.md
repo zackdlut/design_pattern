@@ -9,6 +9,7 @@ include/<category>/<pattern>/<pattern>.h   头文件
 src/<category>/<pattern>/<pattern>.cpp     源文件
 tests/<category>/<pattern>_test.cpp        Google Test 用例
 docs/<category>/<pattern>.md               学习笔记
+examples/<category>/<pattern>/main.cpp     客户端示例
 ```
 
 `<category>` 为 `creational`（创建型）、`structural`（结构型）、`behavioral`（行为型）。
@@ -30,6 +31,22 @@ ctest --test-dir build --output-on-failure
 ```bash
 cmake -S . -B build -DDESIGN_PATTERN_BUILD_TESTS=OFF
 ```
+
+客户端示例默认开启，产物在 `build/examples/example_<pattern>`。只编示例：
+
+```bash
+cmake --build build --target examples
+./build/examples/example_singleton
+./build/examples/example_factory_method
+```
+
+关闭示例：
+
+```bash
+cmake -S . -B build -DDESIGN_PATTERN_BUILD_EXAMPLES=OFF
+```
+
+未实现的模式在 `examples/` 下只有可编译骨架；`singleton` 和 `factory_method` 是真实使用场景。详见 [`examples/README.md`](examples/README.md)。
 
 ## 建议学习顺序
 

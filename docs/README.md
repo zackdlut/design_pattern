@@ -15,6 +15,7 @@
 
 ## 结构型（Structural）
 
+- [结构型总览](structural/structural_pattern.md)：七种 GoF 对照、C++ 日常组合方式、演进图
 - [Adapter（适配器）](structural/adapter.md)
 - [Bridge（桥接）](structural/bridge.md)
 - [Composite（组合）](structural/composite.md)

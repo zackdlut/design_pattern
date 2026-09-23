@@ -82,26 +82,26 @@ std::string HttpRequest::describe() const {
   return out;
 }
 
-void HttpObjectBuilder::setMethod(std::string_view method) {
+void HttpRequestBuilder::setMethod(std::string_view method) {
   method_ = require_method(method);
 }
 
-void HttpObjectBuilder::setUrl(std::string_view url) {
+void HttpRequestBuilder::setUrl(std::string_view url) {
   require_url(url);
   url_ = std::string(url);
 }
 
-void HttpObjectBuilder::setHeader(std::string_view name,
-                                  std::string_view value) {
+void HttpRequestBuilder::setHeader(std::string_view name,
+                                   std::string_view value) {
   require_header_name(name);
   headers_.emplace_back(std::string(name), std::string(value));
 }
 
-void HttpObjectBuilder::setBody(std::string_view body) {
+void HttpRequestBuilder::setBody(std::string_view body) {
   body_ = std::string(body);
 }
 
-HttpRequest HttpObjectBuilder::build() const {
+HttpRequest HttpRequestBuilder::build() const {
   return HttpRequest(method_, url_, headers_, body_);
 }
 
@@ -158,30 +158,31 @@ void Director::buildLogin(Builder &builder) const {
   builder.setBody(R"({"user":"alice","password":"secret"})");
 }
 
-HttpRequestBuilder &HttpRequestBuilder::method(std::string_view method) {
+HttpRequestChainBuilder &
+HttpRequestChainBuilder::method(std::string_view method) {
   method_ = require_method(method);
   return *this;
 }
 
-HttpRequestBuilder &HttpRequestBuilder::url(std::string_view url) {
+HttpRequestChainBuilder &HttpRequestChainBuilder::url(std::string_view url) {
   require_url(url);
   url_ = std::string(url);
   return *this;
 }
 
-HttpRequestBuilder &HttpRequestBuilder::header(std::string_view name,
-                                               std::string_view value) {
+HttpRequestChainBuilder &
+HttpRequestChainBuilder::header(std::string_view name, std::string_view value) {
   require_header_name(name);
   headers_.emplace_back(std::string(name), std::string(value));
   return *this;
 }
 
-HttpRequestBuilder &HttpRequestBuilder::body(std::string_view body) {
+HttpRequestChainBuilder &HttpRequestChainBuilder::body(std::string_view body) {
   body_ = std::string(body);
   return *this;
 }
 
-HttpRequest HttpRequestBuilder::build() const {
+HttpRequest HttpRequestChainBuilder::build() const {
   return HttpRequest(method_, url_, headers_, body_);
 }
 

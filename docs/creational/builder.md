@@ -15,7 +15,7 @@
 
 可以把 `Director` 想成「装配手册」：登录请求先写 POST、再写 URL、再加 JSON 头、最后放 body。手册不管最后交出来的是一个 `HttpRequest` 对象，还是一条 `curl` 命令。换建造者，换的是成品形态，不是装配顺序。
 
-本仓库的例子就是拼 HTTP 请求：`HttpObjectBuilder` 交出不可变的 `HttpRequest`，`CurlCommandBuilder` 交出等价的 curl 字符串。
+本仓库的例子就是拼 HTTP 请求：`HttpRequestBuilder` 交出不可变的 `HttpRequest`，`CurlCommandBuilder` 交出等价的 curl 字符串。
 
 ```mermaid
 flowchart LR
@@ -54,7 +54,7 @@ classDiagram
     +setHeader()
     +setBody()
   }
-  class HttpObjectBuilder {
+  class HttpRequestBuilder {
     +build() HttpRequest
   }
   class CurlCommandBuilder {
@@ -64,26 +64,26 @@ classDiagram
     +buildHealthCheck(Builder)
     +buildLogin(Builder)
   }
-  class HttpRequestBuilder {
-    +method() HttpRequestBuilder
-    +url() HttpRequestBuilder
-    +header() HttpRequestBuilder
-    +body() HttpRequestBuilder
+  class HttpRequestChainBuilder {
+    +method() HttpRequestChainBuilder
+    +url() HttpRequestChainBuilder
+    +header() HttpRequestChainBuilder
+    +body() HttpRequestChainBuilder
     +build() HttpRequest
   }
-  Builder <|-- HttpObjectBuilder
+  Builder <|-- HttpRequestBuilder
   Builder <|-- CurlCommandBuilder
   Director ..> Builder : 按配方调用步骤
-  HttpObjectBuilder ..> HttpRequest : build
   HttpRequestBuilder ..> HttpRequest : build
+  HttpRequestChainBuilder ..> HttpRequest : build
 ```
 
 | 构件                                                         | 作用                                                                   |
 | ------------------------------------------------------------ | ---------------------------------------------------------------------- |
 | `HttpRequest`                                              | 装配完成后的不可变产品；`describe()` 方便断言，头文件不引入 iostream |
-| `Builder` + `HttpObjectBuilder` / `CurlCommandBuilder` | GoF 建造者：步骤在抽象接口上，成品类型在具体建造者的 `build()` |
+| `Builder` + `HttpRequestBuilder` / `CurlCommandBuilder` | GoF 建造者：步骤在抽象接口上，成品类型在具体建造者的 `build()` |
 | `Director`                                                 | 固定配方：健康检查、登录。只认`Builder&`，不知道成品长什么样         |
-| `HttpRequestBuilder`                                       | 对照：链式 API，客户端自己当导演                                       |
+| `HttpRequestChainBuilder`                                       | 对照：链式 API，客户端自己当导演                                       |
 
 两套都不在头文件里打日志。差别在三件事：**步骤是虚函数还是返回 `*this`、谁决定装配顺序、`build()` 放在哪**。
 
@@ -93,7 +93,7 @@ flowchart TD
   Q1 -->|能| FM[工厂方法 / 直接构造]
   Q1 -->|不能，要分步装配| Q2{同一套步骤要不要多种成品?}
   Q2 -->|要，客户端持有 Builder&| B[GoF 建造者 + Director]
-  Q2 -->|不要，只是可选字段多| F[链式 HttpRequestBuilder]
+  Q2 -->|不要，只是可选字段多| F[链式 HttpRequestChainBuilder]
 ```
 
 和 [工厂方法](factory_method.md) 的粒度不同：工厂方法一次 `create()` 交出完整对象；建造者把创建拆成 `setMethod` / `setUrl` / `setHeader` / `setBody`。和 [抽象工厂](abstract_factory.md) 也不同：抽象工厂一次造**一族**对象；建造者一次造**一个**复杂对象。
@@ -102,7 +102,7 @@ flowchart TD
 
 差在一件事：**两种成品的类型不一样。**
 
-`HttpObjectBuilder::build()` 返回 `HttpRequest`，`CurlCommandBuilder::build()` 返回 `std::string`。抽象 `Builder` 如果声明 `virtual HttpRequest build()`，curl 那条路就塞不进去。GoF 原意就是：抽象接口只规定**步骤**，取成品是具体建造者自己的事（书里叫 `GetResult`，本仓库统一叫 `build`：交成品时才真正把零件拼起来）。
+`HttpRequestBuilder::build()` 返回 `HttpRequest`，`CurlCommandBuilder::build()` 返回 `std::string`。抽象 `Builder` 如果声明 `virtual HttpRequest build()`，curl 那条路就塞不进去。GoF 原意就是：抽象接口只规定**步骤**，取成品是具体建造者自己的事（书里叫 `GetResult`，本仓库统一叫 `build`：交成品时才真正把零件拼起来）。
 
 `Director` 因此从来不调 `build()`。它只负责把步骤按顺序喊出来。客户端自己拿着具体建造者取成品。
 
@@ -126,11 +126,11 @@ sequenceDiagram
 
 差在一件事：**这个类是不是多态基类。**
 
-`Builder` 要被 `Director` 用 `Builder&` 持有。按值拷会切片，拷贝 / 移动 **`= delete`**，构造仍是 `= default`。`HttpObjectBuilder` / `CurlCommandBuilder` 跟着基类一起不能拷。
+`Builder` 要被 `Director` 用 `Builder&` 持有。按值拷会切片，拷贝 / 移动 **`= delete`**，构造仍是 `= default`。`HttpRequestBuilder` / `CurlCommandBuilder` 跟着基类一起不能拷。
 
-`HttpRequest` 相反：装配结束就是一份数据，客户端按值拿、按值传。链式 `HttpRequestBuilder` 也不是多态点，可以拷一份半成品接着填。
+`HttpRequest` 相反：装配结束就是一份数据，客户端按值拿、按值传。链式 `HttpRequestChainBuilder` 也不是多态点，可以拷一份半成品接着填。
 
-|                        | `Builder` / 具体建造者 | `HttpRequest` / `HttpRequestBuilder` |
+|                        | `Builder` / 具体建造者 | `HttpRequest` / `HttpRequestChainBuilder` |
 | ---------------------- | ------------------------ | ---------------------------------------- |
 | 这个类是什么           | 多态装配工位             | 值对象                                   |
 | 要不要有「自己的实例」 | 要                       | 要                                       |
@@ -168,7 +168,7 @@ flowchart TD
 | `build()` | 缺件或字段互相打架 | 没写 url；`GET` 却有 body |
 | 未调用 `setMethod` / `method()` | 缺省 `"GET"` | 避免为默认值再写一串构造重载 |
 
-`HttpObjectBuilder` / 链式 `HttpRequestBuilder` 的 `build()` 走进 `HttpRequest` 构造函数，由产品自己保证「不可能持有一份非法请求」。`CurlCommandBuilder` 成品是 `std::string`，所以在自己的 `build()` 里跑同一份 `validate_request`。
+`HttpRequestBuilder` / 链式 `HttpRequestChainBuilder` 的 `build()` 走进 `HttpRequest` 构造函数，由产品自己保证「不可能持有一份非法请求」。`CurlCommandBuilder` 成品是 `std::string`，所以在自己的 `build()` 里跑同一份 `validate_request`。
 
 `Director` 的配方写死了合法步骤，按设计不抛。链式没有导演，漏字段是调用方的事，更容易走到 `throw`。对应测试 `BuildersRejectMissingUrl` / `SettersRejectInvalidFields` / `BuildRejectsGetWithBody`。
 
@@ -180,13 +180,13 @@ GoF 原意。稳定配方在 `Director`，变化点在具体建造者怎么把�
 
 ### 原理
 
-客户端准备一个具体建造者和一个导演。导演只拿 `Builder&`，按配方依次调步骤。动态绑定发生在 `setMethod()` 这些虚函数上，不发生在配方上。同一个 `buildLogin()`，交给 `HttpObjectBuilder` 得到对象，交给 `CurlCommandBuilder` 得到 curl。
+客户端准备一个具体建造者和一个导演。导演只拿 `Builder&`，按配方依次调步骤。动态绑定发生在 `setMethod()` 这些虚函数上，不发生在配方上。同一个 `buildLogin()`，交给 `HttpRequestBuilder` 得到对象，交给 `CurlCommandBuilder` 得到 curl。
 
 ```mermaid
 flowchart TD
   subgraph 加一种表示["加一种成品 Markdown 文档"]
     A1[加 MarkdownRequestBuilder]
-    A2[不改 HttpObjectBuilder / CurlCommandBuilder]
+    A2[不改 HttpRequestBuilder / CurlCommandBuilder]
     A3[不改 Director]
   end
   subgraph 加一种配方["加一种请求 Upload"]
@@ -204,7 +204,7 @@ flowchart TD
 | ------------------------------------------------------- | --------------------------------------------------- |
 | `HttpRequest`                                         | 值类型产品；构造时再验一遍，空 method 当成 GET |
 | `Builder`                                             | 纯虚步骤，虚析构，删除拷贝 / 移动                   |
-| `HttpObjectBuilder` / `CurlCommandBuilder`          | `final`，实现放在 `.cpp`，各自提供 `build()` |
+| `HttpRequestBuilder` / `CurlCommandBuilder`          | `final`，实现放在 `.cpp`，各自提供 `build()` |
 | `Director::buildHealthCheck` / `buildLogin` | 非虚，稳定配方                                      |
 
 |                  | `Director::buildLogin` | `Builder::setMethod` 等  |
@@ -224,7 +224,7 @@ void Director::buildLogin(Builder &builder) const {
   builder.setBody(R"({"user":"alice","password":"secret"})");
 }
 
-HttpRequest HttpObjectBuilder::build() const {
+HttpRequest HttpRequestBuilder::build() const {
   return HttpRequest(method_, url_, headers_, body_);
 }
 ```
@@ -237,7 +237,7 @@ HttpRequest HttpObjectBuilder::build() const {
 
 ```cpp
 Director director;
-HttpObjectBuilder http;
+HttpRequestBuilder http;
 CurlCommandBuilder curl;
 director.buildLogin(http);
 director.buildLogin(curl);
@@ -250,7 +250,7 @@ curl.build();
 只依赖抽象步骤，不碰具体类型（测试 `ClientDependsOnBuilderAbstraction`）：
 
 ```cpp
-HttpObjectBuilder http;
+HttpRequestBuilder http;
 Builder &as_http = http;
 director.buildLogin(as_http);
 http.build();  // 取成品仍要具体类型
@@ -270,7 +270,7 @@ http.build();  // 取成品仍要具体类型
 
 ---
 
-## 2. 对照：`HttpRequestBuilder`
+## 2. 对照：`HttpRequestChainBuilder`
 
 对照实现，**不是** GoF 建造者。一个类、一套返回 `*this` 的方法，最后 `build()` 得到 `HttpRequest`。没有抽象 `Builder`，也没有 `Director`。客户端自己决定先写 URL 还是先写 header。
 
@@ -282,7 +282,7 @@ http.build();  // 取成品仍要具体类型
 
 ```mermaid
 flowchart LR
-  A[HttpRequestBuilder] --> M[method]
+  A[HttpRequestChainBuilder] --> M[method]
   M --> U[url]
   U --> H[header]
   H --> B[body]
@@ -292,13 +292,13 @@ flowchart LR
 ```mermaid
 flowchart TB
   subgraph 链式
-    Client1[客户端] --> FB[HttpRequestBuilder]
+    Client1[客户端] --> FB[HttpRequestChainBuilder]
     FB --> P1[HttpRequest]
   end
   subgraph GoF
     Client2[客户端] --> Dir[Director]
     Dir --> Bld[Builder]
-    Bld --> HO[HttpObjectBuilder]
+    Bld --> HO[HttpRequestBuilder]
     Bld --> CC[CurlCommandBuilder]
   end
 ```
@@ -307,12 +307,12 @@ flowchart TB
 
 | 位置                        | 内容                                        |
 | --------------------------- | ------------------------------------------- |
-| 返回`HttpRequestBuilder&` | 链式调用的唯一条件，返回值不能是`void`    |
+| 返回`HttpRequestChainBuilder&` | 链式调用的唯一条件，返回值不能是`void`    |
 | `build() const`           | 按值交出`HttpRequest`；建造者自己仍可再用 |
 | 无抽象基类                  | 不删除拷贝，半成品可以拷一份                |
 
 ```cpp
-HttpRequest req = HttpRequestBuilder()
+HttpRequest req = HttpRequestChainBuilder()
                       .method("POST")
                       .url("/login")
                       .header("Authorization", "Bearer token")
@@ -325,12 +325,12 @@ HttpRequest req = HttpRequestBuilder()
 ### 用法
 
 ```cpp
-HttpRequest login = HttpRequestBuilder()
+HttpRequest login = HttpRequestChainBuilder()
                         .method("POST")
                         .url("/login")
                         .header("Authorization", "Bearer token")
                         .build();
-HttpRequest health = HttpRequestBuilder().url("/health").build();
+HttpRequest health = HttpRequestChainBuilder().url("/health").build();
 ```
 
 对应测试 `FluentBuilderBuildsRequest` / `FluentBuilderDefaultsToGet`。
@@ -354,7 +354,7 @@ HttpRequest health = HttpRequestBuilder().url("/health").build();
 | 望远镜构造函数             | 调用方一次塞完     | 一种             | 改所有重载        | 字段少                   |
 | 一串 setter 再拿对象       | 调用方             | 一种，且对象可变 | 改产品类          | 可变 DTO                 |
 | **GoF 建造者**       | **Director** | **多种**   | 加一个具体建造者  | 同一步骤、多种成品       |
-| 链式`HttpRequestBuilder` | 调用方             | 一种             | 改建造者          | 可选字段多、只有一种成品 |
+| 链式`HttpRequestChainBuilder` | 调用方             | 一种             | 改建造者          | 可选字段多、只有一种成品 |
 | 工厂方法                   | 一次创建           | 一种完整对象     | 加一对类          | 不需要分步装配           |
 | 抽象工厂                   | 一次创建           | 一族对象         | 加一个产品族      | 多产品必须配套           |
 
@@ -378,7 +378,7 @@ flowchart LR
 
 1. **建造者是「分步装配」，不是「带默认参数的构造函数」。** 默认参数解决的是「少写几个实参」；建造者解决的是「步骤可复用、表示可替换、产品离开工位后不可变」。
 2. **`build()` 在具体类上，因为成品类型不同。** 强行写进抽象 `Builder`，第二种表示就没处放。链式建造者的 `build()` 能写在同一个类上，正是因为它只产一种东西。GoF 书里这个方法叫 `GetResult`；本仓库两套都叫 `build()`，差的不是名字，是它挂在哪。
-3. **`HttpRequestBuilder` 只负责填字段。** 没有它，GoF 建造者照样成立；有了它，也不等于把导演和抽象接口都省掉之后还叫同一个模式。
+3. **`HttpRequestChainBuilder` 只负责填字段。** 没有它，GoF 建造者照样成立；有了它，也不等于把导演和抽象接口都省掉之后还叫同一个模式。
 
 ## 怎么选
 
@@ -389,7 +389,7 @@ flowchart LR
         └─ 一次一族配套产品 → 抽象工厂
   └─ 不能，要分步
         └─ 同一套步骤要多种成品 → Builder + Director
-        └─ 只有一种成品，只是可选字段多 → HttpRequestBuilder 链式调用
+        └─ 只有一种成品，只是可选字段多 → HttpRequestChainBuilder 链式调用
 ```
 
 步骤会横向猛涨时，先问能不能接受改 `Builder` 接口；不能接受就不要把每一个 HTTP 细节都塞进同一个抽象建造者。

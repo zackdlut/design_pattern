@@ -287,7 +287,7 @@ b->setPosition(4, 1);
 
 对照实现，**不是** GoF 原型。一个可拷贝的值类，没有虚函数，也没有登记表。客户端写 `UnitSpec spawned = template_spec;`，再改副本字段。
 
-它对应工厂方法笔记里的 `SimpleFactory`、建造者笔记里的 `HttpRequestBuilder`：把「我已经知道具体类型」收成最便宜的语言机制。真正保证副本独立的，还是值语义本身。
+它对应工厂方法笔记里的 `SimpleFactory`、建造者笔记里的 `HttpRequestChainBuilder`：把「我已经知道具体类型」收成最便宜的语言机制。真正保证副本独立的，还是值语义本身。
 
 ### 原理
 

@@ -9,9 +9,9 @@
 using design_pattern::creational::builder::Builder;
 using design_pattern::creational::builder::CurlCommandBuilder;
 using design_pattern::creational::builder::Director;
-using design_pattern::creational::builder::HttpObjectBuilder;
-using design_pattern::creational::builder::HttpRequest;
 using design_pattern::creational::builder::HttpRequestBuilder;
+using design_pattern::creational::builder::HttpRequest;
+using design_pattern::creational::builder::HttpRequestChainBuilder;
 
 namespace {
 
@@ -26,8 +26,8 @@ void expect_invalid(const char *message, auto &&action) {
 
 }  // namespace
 
-TEST(BuilderTest, HttpObjectBuilderBuildsRequest) {
-  HttpObjectBuilder builder;
+TEST(BuilderTest, HttpRequestBuilderBuildsRequest) {
+  HttpRequestBuilder builder;
   builder.setMethod("POST");
   builder.setUrl("/login");
   builder.setHeader("Authorization", "Bearer token");
@@ -58,7 +58,7 @@ TEST(BuilderTest, CurlCommandBuilderBuildsCurl) {
 
 TEST(BuilderTest, DirectorConstructsLoginOnBothBuilders) {
   Director director;
-  HttpObjectBuilder http;
+  HttpRequestBuilder http;
   CurlCommandBuilder curl;
   director.buildLogin(http);
   director.buildLogin(curl);
@@ -73,7 +73,7 @@ TEST(BuilderTest, DirectorConstructsLoginOnBothBuilders) {
 
 TEST(BuilderTest, DirectorConstructsHealthCheck) {
   Director director;
-  HttpObjectBuilder http;
+  HttpRequestBuilder http;
   CurlCommandBuilder curl;
   director.buildHealthCheck(http);
   director.buildHealthCheck(curl);
@@ -84,7 +84,7 @@ TEST(BuilderTest, DirectorConstructsHealthCheck) {
 
 TEST(BuilderTest, ClientDependsOnBuilderAbstraction) {
   Director director;
-  HttpObjectBuilder http;
+  HttpRequestBuilder http;
   CurlCommandBuilder curl;
   Builder &as_http = http;
   Builder &as_curl = curl;
@@ -101,14 +101,14 @@ TEST(BuilderTest, CopyAndMoveAreDeleted) {
   static_assert(!std::is_move_constructible_v<Builder>);
   static_assert(!std::is_copy_assignable_v<Builder>);
   static_assert(!std::is_move_assignable_v<Builder>);
-  static_assert(!std::is_copy_constructible_v<HttpObjectBuilder>);
+  static_assert(!std::is_copy_constructible_v<HttpRequestBuilder>);
   static_assert(!std::is_copy_constructible_v<CurlCommandBuilder>);
   static_assert(std::is_copy_constructible_v<HttpRequest>);
-  static_assert(std::is_copy_constructible_v<HttpRequestBuilder>);
+  static_assert(std::is_copy_constructible_v<HttpRequestChainBuilder>);
 }
 
 TEST(BuilderTest, FluentBuilderBuildsRequest) {
-  HttpRequest request = HttpRequestBuilder()
+  HttpRequest request = HttpRequestChainBuilder()
                             .method("POST")
                             .url("/login")
                             .header("Authorization", "Bearer token")
@@ -120,7 +120,7 @@ TEST(BuilderTest, FluentBuilderBuildsRequest) {
 }
 
 TEST(BuilderTest, FluentBuilderDefaultsToGet) {
-  HttpRequest request = HttpRequestBuilder().url("/health").build();
+  HttpRequest request = HttpRequestChainBuilder().url("/health").build();
   EXPECT_EQ(request.method(), "GET");
   EXPECT_EQ(request.url(), "/health");
   EXPECT_TRUE(request.headers().empty());
@@ -129,18 +129,18 @@ TEST(BuilderTest, FluentBuilderDefaultsToGet) {
 }
 
 TEST(BuilderTest, BuildersRejectMissingUrl) {
-  expect_invalid("url is required", [] { HttpObjectBuilder{}.build(); });
-  expect_invalid("url is required", [] { CurlCommandBuilder{}.build(); });
   expect_invalid("url is required", [] { HttpRequestBuilder{}.build(); });
+  expect_invalid("url is required", [] { CurlCommandBuilder{}.build(); });
+  expect_invalid("url is required", [] { HttpRequestChainBuilder{}.build(); });
 }
 
 TEST(BuilderTest, SettersRejectInvalidFields) {
-  expect_invalid("method is required", [] { HttpObjectBuilder{}.setMethod(""); });
+  expect_invalid("method is required", [] { HttpRequestBuilder{}.setMethod(""); });
   expect_invalid("unknown HTTP method: FOO",
-                 [] { HttpObjectBuilder{}.setMethod("FOO"); });
-  expect_invalid("url is required", [] { HttpObjectBuilder{}.setUrl(""); });
+                 [] { HttpRequestBuilder{}.setMethod("FOO"); });
+  expect_invalid("url is required", [] { HttpRequestBuilder{}.setUrl(""); });
   expect_invalid("header name is required",
-                 [] { HttpObjectBuilder{}.setHeader("", "v"); });
+                 [] { HttpRequestBuilder{}.setHeader("", "v"); });
 
   expect_invalid("method is required", [] { CurlCommandBuilder{}.setMethod(""); });
   expect_invalid("unknown HTTP method: FOO",
@@ -150,17 +150,17 @@ TEST(BuilderTest, SettersRejectInvalidFields) {
                  [] { CurlCommandBuilder{}.setHeader("", "v"); });
 
   expect_invalid("method is required",
-                 [] { HttpRequestBuilder{}.method(""); });
+                 [] { HttpRequestChainBuilder{}.method(""); });
   expect_invalid("unknown HTTP method: FOO",
-                 [] { HttpRequestBuilder{}.method("FOO"); });
-  expect_invalid("url is required", [] { HttpRequestBuilder{}.url(""); });
+                 [] { HttpRequestChainBuilder{}.method("FOO"); });
+  expect_invalid("url is required", [] { HttpRequestChainBuilder{}.url(""); });
   expect_invalid("header name is required",
-                 [] { HttpRequestBuilder{}.header("", "v"); });
+                 [] { HttpRequestChainBuilder{}.header("", "v"); });
 }
 
 TEST(BuilderTest, BuildRejectsGetWithBody) {
   expect_invalid("GET request must not have a body", [] {
-    HttpObjectBuilder builder;
+    HttpRequestBuilder builder;
     builder.setMethod("GET");
     builder.setUrl("/health");
     builder.setBody("oops");
@@ -174,6 +174,6 @@ TEST(BuilderTest, BuildRejectsGetWithBody) {
     builder.build();
   });
   expect_invalid("GET request must not have a body", [] {
-    HttpRequestBuilder().method("GET").url("/health").body("oops").build();
+    HttpRequestChainBuilder().method("GET").url("/health").body("oops").build();
   });
 }

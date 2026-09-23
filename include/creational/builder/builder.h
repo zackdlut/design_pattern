@@ -41,7 +41,7 @@ public:
   virtual void setBody(std::string_view body) = 0;
 };
 
-class HttpObjectBuilder final : public Builder {
+class HttpRequestBuilder final : public Builder {
 public:
   void setMethod(std::string_view method) override;
   void setUrl(std::string_view url) override;
@@ -80,12 +80,13 @@ public:
 };
 
 // 对照：链式建造者。客户端自己当导演，没有抽象 Builder / Director。
-class HttpRequestBuilder final {
+class HttpRequestChainBuilder final {
 public:
-  HttpRequestBuilder &method(std::string_view method);
-  HttpRequestBuilder &url(std::string_view url);
-  HttpRequestBuilder &header(std::string_view name, std::string_view value);
-  HttpRequestBuilder &body(std::string_view body);
+  HttpRequestChainBuilder &method(std::string_view method);
+  HttpRequestChainBuilder &url(std::string_view url);
+  HttpRequestChainBuilder &header(std::string_view name,
+                                  std::string_view value);
+  HttpRequestChainBuilder &body(std::string_view body);
 
   HttpRequest build() const;
 

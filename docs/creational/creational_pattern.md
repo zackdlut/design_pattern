@@ -121,11 +121,11 @@ classDiagram
   class Director {
     +buildLogin(Builder)
   }
-  Builder <|-- HttpObjectBuilder
+  Builder <|-- HttpRequestBuilder
   Builder <|-- CurlCommandBuilder
   Director ..> Builder
-  class HttpRequestBuilder {
-    +method() HttpRequestBuilder
+  class HttpRequestChainBuilder {
+    +method() HttpRequestChainBuilder
     +build() HttpRequest
   }
 
@@ -156,7 +156,7 @@ classDiagram
 | Abstract Factory | 一族 `create*()` | 客户端只认抽象 | 加一个族；加一种**产品角色**要改接口 | 多个 `unique_ptr` |
 | VersionFactorySelector | `switch` 选出工厂 | 仍走抽象工厂 | 改选择器和枚举 | `unique_ptr<AbstractFactory>` |
 | GoF Builder + Director | 导演调步骤，具体建造者攒零件 | 客户端在具体类上 `build()` | 加一种表示 | `HttpRequest` 或 `string` |
-| HttpRequestBuilder | 调用方自己链式填字段 | 调用方 `build()` | 改这一个类 | `HttpRequest` |
+| HttpRequestChainBuilder | 调用方自己链式填字段 | 调用方 `build()` | 改这一个类 | `HttpRequest` |
 | Prototype | 已有实例的 `clone()` | 客户端改副本差异字段 | 加一个具体原型 | `unique_ptr<Prototype>` |
 | PrototypeRegistry | 名字 → 模板 → `clone()` | 客户端只认字符串 | 多 `registerPrototype` 一次 | `unique_ptr<Prototype>` |
 | UnitSpec | 拷贝构造 | 调用方 | 改这一个值类 | 值 |
@@ -173,7 +173,7 @@ classDiagram
 
 **建造者 vs 工厂方法**
 
-工厂方法假设对象**一步就能造完**。建造者把创建拆成 `setMethod` / `setUrl` / `setHeader` / `setBody`。同一套步骤要 HTTP 对象和 curl 两种成品时，才需要 GoF 的抽象 `Builder` + `Director`；只有一种 `HttpRequest`、只是可选字段多，链式 `HttpRequestBuilder` 更常见。
+工厂方法假设对象**一步就能造完**。建造者把创建拆成 `setMethod` / `setUrl` / `setHeader` / `setBody`。同一套步骤要 HTTP 对象和 curl 两种成品时，才需要 GoF 的抽象 `Builder` + `Director`；只有一种 `HttpRequest`、只是可选字段多，链式 `HttpRequestChainBuilder` 更常见。
 
 **建造者 vs 原型**
 
@@ -273,7 +273,7 @@ auto p = SimpleFactory::create(ProductType::A);
 | 写法 | 本仓库对照 | 真实项目里像什么 |
 | ---- | ---------- | ---------------- |
 | 值对象 + 拷贝 | `UnitSpec` | DTO、配置、小聚合 |
-| 链式 setter 最后 `build()` | `HttpRequestBuilder` | `RequestBuilder`、测试 fixture |
+| 链式 setter 最后 `build()` | `HttpRequestChainBuilder` | `RequestBuilder`、测试 fixture |
 | 构造函数注入依赖 | 五种模式都没强制单例工厂 | 把 `Logger&` 传进来，而不是 `Logger::getInstance()` |
 
 依赖注入（DI）不是 GoF 创建型模式，却经常**替代单例**：对象仍随便造，谁需要资源谁在构造时把资源接进来。单测可以塞假对象。进程级真资源（日志设备、配置）才考虑 Meyers 单例。
@@ -337,7 +337,7 @@ flowchart TB
   DI -->|确实全进程只能一份| SI
 ```
 
-上半是默认工具箱，下半是痛点涨出来之后的升级。本仓库每个模式带的对照类（`SimpleFactory`、`HttpRequestBuilder`、`UnitSpec`、`VersionFactorySelector`）刻意停在上半，避免把日常写法误叫成 GoF。
+上半是默认工具箱，下半是痛点涨出来之后的升级。本仓库每个模式带的对照类（`SimpleFactory`、`HttpRequestChainBuilder`、`UnitSpec`、`VersionFactorySelector`）刻意停在上半，避免把日常写法误叫成 GoF。
 
 ---
 
@@ -486,7 +486,7 @@ flowchart LR
 | -------- | -------------- | ---------- |
 | 单例当全局 | 能注入就注入；真全局才 Meyers | `SingletonMeyers`，笔记里写了不适合当全局变量 |
 | `create()` 返回裸指针 | `unique_ptr` | 全部工厂 / `clone()` |
-| 为可选字段上 Director | 链式建造者或指定初始化 | `HttpRequestBuilder` |
+| 为可选字段上 Director | 链式建造者或指定初始化 | `HttpRequestChainBuilder` |
 | 为拷贝上 Prototype | 值类型直接拷 | `UnitSpec` |
 | 为每种子类写 Factory | 简单工厂或登记表 | `SimpleFactory`、`PrototypeRegistry` |
 

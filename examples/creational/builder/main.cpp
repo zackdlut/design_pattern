@@ -6,9 +6,9 @@
 using design_pattern::creational::builder::Builder;
 using design_pattern::creational::builder::CurlCommandBuilder;
 using design_pattern::creational::builder::Director;
-using design_pattern::creational::builder::HttpObjectBuilder;
-using design_pattern::creational::builder::HttpRequest;
 using design_pattern::creational::builder::HttpRequestBuilder;
+using design_pattern::creational::builder::HttpRequest;
+using design_pattern::creational::builder::HttpRequestChainBuilder;
 
 namespace {
 
@@ -23,7 +23,7 @@ int main() {
   std::cout << "=== 建造者：同一套装配步骤，产出 HTTP 对象或 curl 命令 ===\n";
 
   Director director;
-  HttpObjectBuilder login_http;
+  HttpRequestBuilder login_http;
   CurlCommandBuilder login_curl;
   director.buildLogin(login_http);
   director.buildLogin(login_curl);
@@ -31,7 +31,7 @@ int main() {
   std::cout << "  object: " << login_http.build().describe() << "\n";
   std::cout << "  curl:   " << login_curl.build() << "\n";
 
-  HttpObjectBuilder health_http;
+  HttpRequestBuilder health_http;
   CurlCommandBuilder health_curl;
   director.buildHealthCheck(health_http);
   director.buildHealthCheck(health_curl);
@@ -40,7 +40,7 @@ int main() {
   std::cout << "  curl:   " << health_curl.build() << "\n";
 
   std::cout << "\n=== 同一抽象 Builder&，换具体建造者即换表示 ===\n";
-  HttpObjectBuilder as_object;
+  HttpRequestBuilder as_object;
   CurlCommandBuilder as_curl;
   Builder &object_ref = as_object;
   Builder &curl_ref = as_curl;
@@ -51,7 +51,7 @@ int main() {
   std::cout << "  via Builder& (curl):        " << as_curl.build() << "\n";
 
   std::cout << "\n=== 对照：链式建造者，客户端自己当导演 ===\n";
-  HttpRequest req = HttpRequestBuilder()
+  HttpRequest req = HttpRequestChainBuilder()
                         .method("POST")
                         .url("/login")
                         .header("Authorization", "Bearer token")
@@ -59,12 +59,12 @@ int main() {
                         .build();
   std::cout << "  " << req.describe() << "\n";
 
-  HttpRequest health = HttpRequestBuilder().url("/health").build();
+  HttpRequest health = HttpRequestChainBuilder().url("/health").build();
   std::cout << "  " << health.describe() << "\n";
 
   std::cout << "\n=== 错误处理：步骤拒绝非法字段，build() 再查跨字段不变量 ===\n";
   try {
-    HttpObjectBuilder bad;
+    HttpRequestBuilder bad;
     bad.setMethod("GET");
     bad.setUrl("/health");
     bad.setBody("oops");
@@ -73,7 +73,7 @@ int main() {
     std::cout << "  GoF:    " << error.what() << "\n";
   }
   try {
-    (void)HttpRequestBuilder().method("POST").url("").build();
+    (void)HttpRequestChainBuilder().method("POST").url("").build();
   } catch (const std::invalid_argument &error) {
     std::cout << "  fluent: " << error.what() << "\n";
   }

@@ -36,7 +36,7 @@ flowchart LR
 **不适合**：
 
 - 只有一层文件、类型也固定 → `std::vector` 加一个循环就够了
-- 同一个节点要出现在两棵子树里，或结构是图 → 组合要求恰好一个父节点。要共享叶子，那是享元
+- 同一个节点要出现在两棵子树里，或结构是图 → 组合要求恰好一个父节点。要共享叶子，那是[享元](flyweight.md)
 - 给**一个**对象动态加职责，链上始终只有一个内层 → 那是装饰器
 - 两边接口对不上，要做翻译 → 那是适配器
 - 想用一个新入口盖住一整套互不相同的类 → 那是外观
@@ -157,7 +157,7 @@ std::unique_ptr<Node> remove(std::string_view name);
 
 `unique_ptr` 还把「恰好一个父节点」写进类型。同一个 `File` 不能同时放进两个 `Folder`，`size()` 不会把一份字节算两次，所有权链也走不回自己，树不会变成带环的图。`remove` 把这棵子树的所有权交回去：对象还活着，父节点的 `size()` 不再算它。
 
-`child()` 返回的是不拥有的观察指针。`vector` 扩容只搬 `unique_ptr`，不搬堆上的节点，所以这个指针在该子节点被 `remove` 之前一直有效。对应测试 `ChildPointerStaysValidAcrossAdds`。若改成 `shared_ptr`，两个父节点可以共享一个孩子，上面这条不变量就没了。要共享的是享元，不是把组合的所有权改松。
+`child()` 返回的是不拥有的观察指针。`vector` 扩容只搬 `unique_ptr`，不搬堆上的节点，所以这个指针在该子节点被 `remove` 之前一直有效。对应测试 `ChildPointerStaysValidAcrossAdds`。若改成 `shared_ptr`，两个父节点可以共享一个孩子，上面这条不变量就没了。要共享的是[享元](flyweight.md)，不是把组合的所有权改松。
 
 名字在构造时定死，没有 `setName`。父节点用名字区分直接子节点；子节点若能事后改名，兄弟之间的唯一性会在容器不知道的情况下坏掉。
 
@@ -493,7 +493,7 @@ flowchart LR
   └─ 有
         └─ 组树也要只拿基类引用 → Node / File / Folder
         └─ 叶子上不该出现 add，组树代码拿着容器 → Entry / Document / Directory
-        └─ 叶子要在多处共享 → 先保留这棵树的唯一所有权，共享的那部分状态再考虑享元
+        └─ 叶子要在多处共享 → 先保留这棵树的唯一所有权，共享的那部分状态再考虑[享元](flyweight.md)
 ```
 
 `child()` 交出去的是观察指针。要把子树拿到别的父节点下，用 `remove()` 取回 `unique_ptr`，再 `add` 给新的容器。
@@ -505,6 +505,7 @@ flowchart LR
 - [Facade（外观）](facade.md)：简化一组互不相同的类 vs 统一一组相同接口的节点
 - [Adapter（适配器）](adapter.md)：翻译接口 vs 递归结构
 - [Proxy（代理）](proxy.md)：控制访问 vs 表达部分-整体
+- [Flyweight（享元）](flyweight.md)：共享的是不变状态，不是树节点的所有权
 - [Prototype（原型）](../creational/prototype.md)：通过基类按值拷贝会切片；组合用 `unique_ptr` 避开同样的问题
 - [Visitor（访问者）](../behavioral/visitor.md)：操作种类比节点种类变得更快时，把操作从 `Node` 上挪走
 - 《Effective C++》条款 18：让接口容易正确使用、难以误用（所有权写进 `unique_ptr`）

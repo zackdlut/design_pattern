@@ -41,7 +41,7 @@ flowchart LR
 - 两边接口不一样，要做翻译 → 那是[适配器](adapter.md)
 - 接口相同，调用仍会发生，只是前后要多做一步 → 那是[装饰器](decorator.md)
 - 想把一组互不相同的类收成一个粗粒度用例 → 那是[外观](facade.md)
-- 很多对象要共享同一份不变数据 → 那是享元。两个 `LazyImage("same.png")` 会读盘两次
+- 很多对象要共享同一份不变数据 → 那是[享元](flyweight.md)。两个 `LazyImage("same.png")` 会读盘两次
 - 访问规则只有一处、以后也不会再包一层 → 直接在调用点写判断
 
 ## 共同骨架
@@ -362,7 +362,7 @@ sequenceDiagram
 
 `loaded()` 和 `render_count()` 留在 `LazyImage` 上。相册通过 `Image&` 看图时用不到这两个数；它们是在回答「替身有没有把真对象造出来、真对象画了几次」。还没加载时 `render_count()` 返回 0，不制造真图。
 
-两个 `LazyImage("same.png")` 会 `open` 两次。代理各自持有自己的真图，不把像素摊给别人用。要共享，那是享元。
+两个 `LazyImage("same.png")` 会 `open` 两次。代理各自持有自己的真图，不把像素摊给别人用。要共享，那是[享元](flyweight.md)。
 
 加一张「先别读盘」的图，步骤是新写一个虚代理，不改 `RealImage`，也不改已经在用真图的调用点。变化点在创建时机，不在画面怎么画。
 
@@ -733,5 +733,6 @@ flowchart LR
 - [Adapter（适配器）](adapter.md)：接口不同，中间做翻译
 - [Decorator（装饰器）](decorator.md)：接口相同，调用仍会发生，前后追加职责
 - [Facade（外观）](facade.md)：给一组不同接口一个粗粒度入口
+- [Flyweight（享元）](flyweight.md)：许多上下文共用一份不变数据。代理不会把两张同名图片收成一个对象
 - 《Effective C++》条款 18：让接口容易正确使用、难以误用（所有权写进 `unique_ptr`，图库禁止拷贝和移动）
 - `std::unique_ptr` / `std::optional`（内层的所有权，以及「还没有成功的 display」）

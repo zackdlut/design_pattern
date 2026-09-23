@@ -7,9 +7,9 @@
 #include <string_view>
 #include <vector>
 
-using design_pattern::creational::factory_method::ConcreteCreatorA;
-using design_pattern::creational::factory_method::ConcreteCreatorB;
-using design_pattern::creational::factory_method::Creator;
+using design_pattern::creational::factory_method::ConcreteFactoryA;
+using design_pattern::creational::factory_method::ConcreteFactoryB;
+using design_pattern::creational::factory_method::Factory;
 using design_pattern::creational::factory_method::Product;
 using design_pattern::creational::factory_method::ProductType;
 using design_pattern::creational::factory_method::SimpleFactory;
@@ -19,22 +19,24 @@ namespace {
 // 内容平台的发布任务。渠道决定走哪条流水线，客户端不 new 具体产品。
 struct PublishJob {
   std::string title;
-  std::string channel; // "web" -> CreatorA，"app" -> CreatorB
+  std::string channel; // "web" -> FactoryA，"app" -> FactoryB
 };
 
-std::unique_ptr<Creator> make_publisher(std::string_view channel) {
+std::unique_ptr<Factory> make_publisher(std::string_view channel) {
   if (channel == "web") {
-    return std::make_unique<ConcreteCreatorA>();
+    return std::make_unique<ConcreteFactoryA>();
   }
   if (channel == "app") {
-    return std::make_unique<ConcreteCreatorB>();
+    return std::make_unique<ConcreteFactoryB>();
   }
   throw std::invalid_argument("unknown channel: " + std::string(channel));
 }
 
-// 客户端只依赖 Creator：稳定流程在 process()，产品类型由子类决定。
-void publish(const Creator &pipeline, std::string_view title) {
-  std::cout << "  publish \"" << title << "\" -> " << pipeline.process() << "\n";
+// 客户端只依赖 Factory 来创建。use() / show() 由调用方完成。
+void publish(const Factory &pipeline, std::string_view title) {
+  const auto product = pipeline.create();
+  std::cout << "  publish \"" << title << "\" -> " << product->use() << " | "
+            << product->show() << "\n";
 }
 
 ProductType parse_product_type(std::string_view name) {
@@ -65,16 +67,16 @@ int main() {
   }
 
   std::cout << "\n=== 同一抽象，换子类即换产品 ===\n";
-  ConcreteCreatorA web;
-  ConcreteCreatorB app;
-  const Creator &as_web = web;
-  const Creator &as_app = app;
-  publish(as_web, "via Creator& (web)");
-  publish(as_app, "via Creator& (app)");
+  ConcreteFactoryA web;
+  ConcreteFactoryB app;
+  const Factory &as_web = web;
+  const Factory &as_app = app;
+  publish(as_web, "via Factory& (web)");
+  publish(as_app, "via Factory& (app)");
 
-  std::cout << "\n=== 对照：简单工厂按配置枚举创建，调用方自己 use/show ===\n";
+  std::cout << "\n=== 对照：简单工厂按配置枚举创建，调用方同样自己 use/show ===\n";
   for (std::string_view type_name : {"csv", "json"}) {
-    auto product = SimpleFactory::createProduct(parse_product_type(type_name));
+    auto product = SimpleFactory::create(parse_product_type(type_name));
     std::cout << "  config=" << type_name << " -> " << product->use() << " | "
               << product->show() << "\n";
   }

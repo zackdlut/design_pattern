@@ -106,7 +106,7 @@ auto copy = as_unit.clone();          // 仍是 Warrior
 // Prototype sliced = as_unit;        // 编译失败：拷贝已删除
 ```
 
-这和 [工厂方法](factory_method.md) 里 `Product` 删除拷贝是同一条规则：多态基类不当值来拷。工厂方法用虚 `createProduct()` 决定**造哪一类空对象**；原型用虚 `clone()` 决定**复制哪一个已有实例**。
+这和 [工厂方法](factory_method.md) 里 `Product` 删除拷贝是同一条规则：多态基类不当值来拷。工厂方法用虚 `create()` 决定**造哪一类空对象**；原型用虚 `clone()` 决定**复制哪一个已有实例**。
 
 ### 为什么 `clone()` 返回 `unique_ptr`，内部用 `make_unique` 重造
 
@@ -366,7 +366,7 @@ right.setPosition(4, 1);
 ```mermaid
 flowchart LR
   subgraph FM[工厂方法]
-    C1[Creator] -->|从零| P1[一个新 Product]
+    C1[Factory] -->|从零| P1[一个新 Product]
   end
   subgraph PR[原型]
     T[模板实例] -->|clone| P2[一份独立副本]

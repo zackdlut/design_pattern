@@ -5,46 +5,46 @@
 
 namespace design_pattern::creational::abstract_factory {
 
-class Button {
+class ProductA {
 public:
-  Button() = default;
-  virtual ~Button() = default;
-  Button(const Button &) = delete;
-  Button &operator=(const Button &) = delete;
-  Button(Button &&) = delete;
-  Button &operator=(Button &&) = delete;
+  ProductA() = default;
+  virtual ~ProductA() = default;
+  ProductA(const ProductA &) = delete;
+  ProductA &operator=(const ProductA &) = delete;
+  ProductA(ProductA &&) = delete;
+  ProductA &operator=(ProductA &&) = delete;
 
   virtual std::string paint() const = 0;
 };
 
-class WindowsButton final : public Button {
+class StandardProductA final : public ProductA {
 public:
   std::string paint() const override;
 };
 
-class MacButton final : public Button {
+class ProProductA final : public ProductA {
 public:
   std::string paint() const override;
 };
 
-class CheckBox {
+class ProductB {
 public:
-  CheckBox() = default;
-  virtual ~CheckBox() = default;
-  CheckBox(const CheckBox &) = delete;
-  CheckBox &operator=(const CheckBox &) = delete;
-  CheckBox(CheckBox &&) = delete;
-  CheckBox &operator=(CheckBox &&) = delete;
+  ProductB() = default;
+  virtual ~ProductB() = default;
+  ProductB(const ProductB &) = delete;
+  ProductB &operator=(const ProductB &) = delete;
+  ProductB(ProductB &&) = delete;
+  ProductB &operator=(ProductB &&) = delete;
 
   virtual std::string paint() const = 0;
 };
 
-class WindowsCheckBox final : public CheckBox {
+class StandardProductB final : public ProductB {
 public:
   std::string paint() const override;
 };
 
-class MacCheckBox final : public CheckBox {
+class ProProductB final : public ProductB {
 public:
   std::string paint() const override;
 };
@@ -58,29 +58,29 @@ public:
   AbstractFactory(AbstractFactory &&) = delete;
   AbstractFactory &operator=(AbstractFactory &&) = delete;
 
-  virtual std::unique_ptr<Button> createButton() const = 0;
-  virtual std::unique_ptr<CheckBox> createCheckBox() const = 0;
+  virtual std::unique_ptr<ProductA> createProductA() const = 0;
+  virtual std::unique_ptr<ProductB> createProductB() const = 0;
 };
 
-class WindowsGUIFactory final : public AbstractFactory {
+class StandardVersionFactory final : public AbstractFactory {
 public:
-  std::unique_ptr<Button> createButton() const override;
-  std::unique_ptr<CheckBox> createCheckBox() const override;
+  std::unique_ptr<ProductA> createProductA() const override;
+  std::unique_ptr<ProductB> createProductB() const override;
 };
 
-class MacGUIFactory final : public AbstractFactory {
+class ProVersionFactory final : public AbstractFactory {
 public:
-  std::unique_ptr<Button> createButton() const override;
-  std::unique_ptr<CheckBox> createCheckBox() const override;
+  std::unique_ptr<ProductA> createProductA() const override;
+  std::unique_ptr<ProductB> createProductB() const override;
 };
 
-enum class GuiTheme { Windows, Mac };
+enum class Version { Standard, Pro };
 
-// 对照：按配置选具体工厂。客户端拿到的仍是 AbstractFactory，不加产品不必改渲染流程。
-class GuiFactorySelector final {
+// 对照：按配置选具体工厂。客户端拿到的仍是 AbstractFactory，不加产品不必改使用流程。
+class VersionFactorySelector final {
 public:
-  GuiFactorySelector() = delete;
-  static std::unique_ptr<AbstractFactory> create(GuiTheme theme);
+  VersionFactorySelector() = delete;
+  static std::unique_ptr<AbstractFactory> create(Version version);
 };
 
 }  // namespace design_pattern::creational::abstract_factory

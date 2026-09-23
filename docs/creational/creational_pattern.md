@@ -51,8 +51,8 @@ flowchart TB
 | 模式 | 钉死的问题 | 本仓库里像什么 | 变化点 |
 | ---- | ---------- | -------------- | ------ |
 | [Singleton](singleton.md) | 造**几个**：恰好一个，全局入口 `getInstance()` | 总配电箱 | 实例化时机（饿汉 / Meyers / 加锁） |
-| [Factory Method](factory_method.md) | 造**哪一种**：流程写在 `Creator::process()`，类型推迟到子类 | 出餐手册 vs 各地菜品 | 加一对 `ConcreteProduct` + `ConcreteCreator` |
-| [Abstract Factory](abstract_factory.md) | 一次造**一族**：选中工厂就锁定整套 | 装修风格包 | 加一个产品族（Windows / Mac） |
+| [Factory Method](factory_method.md) | 造**哪一种**：子类覆盖 `create()`，使用留在调用方 | 后厨窗口 vs 各地菜品 | 加一对 `ConcreteProduct` + `ConcreteFactory` |
+| [Abstract Factory](abstract_factory.md) | 一次造**一族**：选中工厂就锁定整套 | 装修风格包 | 加一个产品族（Standard / Pro） |
 | [Builder](builder.md) | **怎么造完**：步骤可复用，成品表示可换 | 装配手册 vs HTTP 对象 / curl | 加一个具体建造者 |
 | [Prototype](prototype.md) | 按**已有实例**再来一份，且不能切片 | 兵营模具出兵 | 加一个可 `clone()` 的具体类 |
 
@@ -89,30 +89,29 @@ classDiagram
     <<abstract>>
     +use()
   }
-  class Creator {
+  class Factory {
     <<abstract>>
-    +process()
-    +createProduct()* unique_ptr~Product~
+    +create()* unique_ptr~Product~
   }
   class SimpleFactory {
-    +createProduct(type)$ unique_ptr~Product~
+    +create(type)$ unique_ptr~Product~
   }
-  Creator <|-- ConcreteCreator
+  Factory <|-- ConcreteFactory
   Product <|-- ConcreteProduct
-  Creator ..> Product
+  Factory ..> Product
   SimpleFactory ..> Product
 
   class AbstractFactory {
     <<abstract>>
-    +createButton()*
-    +createCheckBox()*
+    +createProductA()*
+    +createProductB()*
   }
-  AbstractFactory <|-- WindowsGUIFactory
-  AbstractFactory <|-- MacGUIFactory
-  class GuiFactorySelector {
-    +create(theme)$ unique_ptr~AbstractFactory~
+  AbstractFactory <|-- StandardVersionFactory
+  AbstractFactory <|-- ProVersionFactory
+  class VersionFactorySelector {
+    +create(version)$ unique_ptr~AbstractFactory~
   }
-  GuiFactorySelector ..> AbstractFactory
+  VersionFactorySelector ..> AbstractFactory
 
   class Builder {
     <<abstract>>
@@ -153,9 +152,9 @@ classDiagram
 | Singleton | 类内部，静态局部 / 指针 | 全进程同一份引用 | 通常不加「第二种单例」 | `T&` |
 | 直接 `make_unique<T>` | 调用方写出具体类 | 调用方 | 改所有 `make_unique` | `unique_ptr<T>` |
 | SimpleFactory | 一个 `switch` | 调用方 | **改工厂** | `unique_ptr<Product>` |
-| Factory Method | 子类 `createProduct()` | **基类 `process()`** | 加一对类，不改流程 | `unique_ptr<Product>` |
+| Factory Method | 子类 `create()` | 调用方 | 加一对类，不改已有工厂 | `unique_ptr<Product>` |
 | Abstract Factory | 一族 `create*()` | 客户端只认抽象 | 加一个族；加一种**产品角色**要改接口 | 多个 `unique_ptr` |
-| GuiFactorySelector | `switch` 选出工厂 | 仍走抽象工厂 | 改选择器和枚举 | `unique_ptr<AbstractFactory>` |
+| VersionFactorySelector | `switch` 选出工厂 | 仍走抽象工厂 | 改选择器和枚举 | `unique_ptr<AbstractFactory>` |
 | GoF Builder + Director | 导演调步骤，具体建造者攒零件 | 客户端在具体类上 `build()` | 加一种表示 | `HttpRequest` 或 `string` |
 | HttpRequestBuilder | 调用方自己链式填字段 | 调用方 `build()` | 改这一个类 | `HttpRequest` |
 | Prototype | 已有实例的 `clone()` | 客户端改副本差异字段 | 加一个具体原型 | `unique_ptr<Prototype>` |
@@ -166,11 +165,11 @@ classDiagram
 
 **工厂方法 vs 抽象工厂**
 
-都把 `new ConcreteX` 从客户端挪走。工厂方法一次交出**一个** `Product`；抽象工厂一次交出 **Button + CheckBox**，并且保证同族。抽象工厂里的每一个 `createButton()`，内部往往仍是工厂方法。本仓库 `GuiFactorySelector` 只负责**选出哪一个工厂**，配套关系仍由 `WindowsGUIFactory` 保证。
+都把 `new ConcreteX` 从客户端挪走。工厂方法一次交出**一个** `Product`；抽象工厂一次交出 **ProductA + ProductB**，并且保证同族。抽象工厂里的每一个 `createProductA()`，内部往往仍是工厂方法。本仓库 `VersionFactorySelector` 只负责**选出哪一个工厂**，配套关系仍由 `StandardVersionFactory` 保证。
 
 **工厂方法 vs 简单工厂**
 
-`SimpleFactory::createProduct(type)` 用枚举分支，加产品必须改这个函数。`Creator::process()` 把使用流程写死，加产品只加一对类。没有稳定流程、种类又少时，简单工厂足够；不要为了「看起来像模式」上 `Creator`。
+`SimpleFactory::create(type)` 用枚举分支，加产品必须改这个函数。`Factory::create()` 把选类型推迟到子类，加产品只加一对类。两边都把产品交回调用方，`use()` / `show()` 不写进工厂。种类少时简单工厂足够；种类会涨、又不想改旧的创建代码时，再用 `Factory`。
 
 **建造者 vs 工厂方法**
 
@@ -186,7 +185,7 @@ classDiagram
 
 **单例 vs 工厂**
 
-单例回答「几个」，工厂回答「哪一种」。`ConcreteCreator` 可以有很多实例，**不是**工厂单例。反过来，单例的 `getInstance()` 也不是工厂方法：它不挑选类型，只返回那一个自己。
+单例回答「几个」，工厂回答「哪一种」。`ConcreteFactory` 可以有很多实例，**不是**工厂单例。反过来，单例的 `getInstance()` 也不是工厂方法：它不挑选类型，只返回那一个自己。
 
 ```mermaid
 flowchart TB
@@ -204,7 +203,7 @@ flowchart TB
 
 和 Java 教材里的 `new` 不同，本仓库统一了三件事：
 
-1. **多态基类删除拷贝 / 移动**，防止切片。`Product`、`Button`、`Builder`、`Prototype` 都是这条规则。
+1. **多态基类删除拷贝 / 移动**，防止切片。`Product`、`ProductA`、`Builder`、`Prototype` 都是这条规则。
 2. **所有权写进返回类型**：工厂和 `clone()` 返回 `unique_ptr`，单例返回引用（调用方不拥有）。
 3. **头文件不打日志**：`use()` / `paint()` / `describe()` 返回 `string`，测试才能 `EXPECT_EQ`。
 
@@ -243,7 +242,7 @@ flowchart LR
 
 ### 2.2 命名构造与免费工厂函数
 
-类型只有一种，但构造规则不少：校验、默认值、从文件加载。这时不必上 `Creator`，把构造函数藏起来，留几个静态函数：
+类型只有一种，但构造规则不少：校验、默认值、从文件加载。这时不必上 `Factory`，把构造函数藏起来，留几个静态函数：
 
 ```cpp
 class Connection {
@@ -255,17 +254,17 @@ private:
 };
 ```
 
-C++ 社区常叫 **Named Constructor**，或直接写自由函数 `make_connection(uri)`。和工厂方法的差别：没有继承、没有虚 `createProduct()`、加「另一种连接」通常还是改这几个函数。种类少、规则集中时，这是默认选项。
+C++ 社区常叫 **Named Constructor**，或直接写自由函数 `make_connection(uri)`。和工厂方法的差别：没有继承、没有虚 `create()`、加「另一种连接」通常还是改这几个函数。种类少、规则集中时，这是默认选项。
 
 ### 2.3 简单工厂与类型登记表
 
 种类开始涨，但客户端仍不想写 `make_unique<ConcreteA>`：
 
 ```cpp
-auto p = SimpleFactory::createProduct(ProductType::A);
+auto p = SimpleFactory::create(ProductType::A);
 ```
 
-再往后，编译期写不死所有分支，会变成**运行时登记表**：字符串 / ID → `std::function<unique_ptr<Product>()>`。本仓库 `PrototypeRegistry` 是同一思路的拷贝版（登记的是模板实例，不是构造函数）。插件、脚本刷怪、按配置加载资源，走的都是登记表，不一定再套一层 `Creator`。
+再往后，编译期写不死所有分支，会变成**运行时登记表**：字符串 / ID → `std::function<unique_ptr<Product>()>`。本仓库 `PrototypeRegistry` 是同一思路的拷贝版（登记的是模板实例，不是构造函数）。插件、脚本刷怪、按配置加载资源，走的都是登记表，不一定再套一层 `Factory`。
 
 ### 2.4 值拷贝、链式建造者、依赖注入
 
@@ -301,12 +300,12 @@ flowchart LR
 运行时选类型不一定要虚函数：
 
 ```cpp
-using Widget = std::variant<WindowsButton, MacButton>;
+using Widget = std::variant<StandardProductA, ProProductA>;
 ```
 
 `std::visit` 代替 `paint()` 虚调用。种类封闭、想要值语义时，这比抽象工厂轻。种类开放、要插件化时，仍用继承 + 工厂 / 原型。
 
-C++20 Concept + 模板是另一条路：**编译期**选实现，没有虚表，也没有运行时工厂。嵌入式、高性能库更常见。它解决的是「算法同一、实现可替换」，不是「配置文件里写 Windows 还是 Mac」。
+C++20 Concept + 模板是另一条路：**编译期**选实现，没有虚表，也没有运行时工厂。嵌入式、高性能库更常见。它解决的是「算法同一、实现可替换」，不是「配置文件里写 Standard 还是 Pro」。
 
 ### 2.7 和 GoF 的对应关系
 
@@ -338,7 +337,7 @@ flowchart TB
   DI -->|确实全进程只能一份| SI
 ```
 
-上半是默认工具箱，下半是痛点涨出来之后的升级。本仓库每个模式带的对照类（`SimpleFactory`、`HttpRequestBuilder`、`UnitSpec`、`GuiFactorySelector`）刻意停在上半，避免把日常写法误叫成 GoF。
+上半是默认工具箱，下半是痛点涨出来之后的升级。本仓库每个模式带的对照类（`SimpleFactory`、`HttpRequestBuilder`、`UnitSpec`、`VersionFactorySelector`）刻意停在上半，避免把日常写法误叫成 GoF。
 
 ---
 
@@ -373,7 +372,7 @@ flowchart TB
   v3 -->|大对象返回、可选字段| v4
 ```
 
-这一轨解决的是安全和寿命。它**不选类型**。所以即使用上 `make_unique`，客户端写 `make_unique<WindowsButton>()` 仍然把具体类写死了——这才轮到工厂。
+这一轨解决的是安全和寿命。它**不选类型**。所以即使用上 `make_unique`，客户端写 `make_unique<StandardProductA>()` 仍然把具体类写死了——这才轮到工厂。
 
 ### 3.2 设计侧：约束一条条加上去
 
@@ -393,8 +392,8 @@ flowchart TB
     SF[简单工厂 switch]
   end
 
-  subgraph L3["3. 种类还会涨，而且已有一段稳定流程"]
-    FM[工厂方法 Creator.process]
+  subgraph L3["3. 种类还会涨，加产品不能改旧工厂"]
+    FM[工厂方法 Factory.create]
   end
 
   subgraph L4["4. 一次必须造配套的一组"]
@@ -419,7 +418,7 @@ flowchart TB
   D -->|不变量 / 多种构造入口| NC
   NC -->|出现 ProductA / B| SF
   SF -->|加产品总要改 switch| FM
-  FM -->|按钮必须配同族复选框| AF
+  FM -->|ProductA 必须配同族 ProductB| AF
   D -->|望远镜构造函数| FL
   FL -->|同一套步骤要两种成品| BD
   D -->|再来一份相同状态| VC
@@ -434,8 +433,8 @@ flowchart TB
 | ---- | ------ | ---------------- | ------ |
 | 0 → 1 | 非法参数、多种合法构造 | 构造函数重载爆炸 | 命名构造 |
 | 1 → 2 | 运行时才知道 A 还是 B | 调用点铺满 `if` / `make_unique<A>` | 简单工厂 |
-| 2 → 3 | 加 C 不能改旧工厂；创建后流程固定 | 每次加产品改中央 `switch` | 工厂方法 |
-| 3 → 4 | 两个产品必须同族 | 客户端自己配对，配错 Win 按钮 + Mac 复选框 | 抽象工厂 |
+| 2 → 3 | 加 C 不能改旧工厂 | 每次加产品改中央 `switch` | 工厂方法 |
+| 3 → 4 | 两个产品必须同族 | 客户端自己配对，配错标准版 ProductA + 专业版 ProductB | 抽象工厂 |
 | 0 → 5a | 十几个可选字段 | 望远镜构造、半成品对象 | 链式建造者 |
 | 5a → GoF | 同一步骤多种表示 | 为 curl 再抄一套 setter | Builder + Director |
 | 0 → 5b | 模板已配好 | 每次从零填技能树 | 值拷贝 |
@@ -489,7 +488,7 @@ flowchart LR
 | `create()` 返回裸指针 | `unique_ptr` | 全部工厂 / `clone()` |
 | 为可选字段上 Director | 链式建造者或指定初始化 | `HttpRequestBuilder` |
 | 为拷贝上 Prototype | 值类型直接拷 | `UnitSpec` |
-| 为每种子类写 Creator | 简单工厂或登记表 | `SimpleFactory`、`PrototypeRegistry` |
+| 为每种子类写 Factory | 简单工厂或登记表 | `SimpleFactory`、`PrototypeRegistry` |
 
 所以演进的最后一跳往往不是「再上一个更重的模式」，而是**问约束是否真的还在**。种类不再涨，就退回简单工厂；不再通过基类拷贝，就退回 `UnitSpec`；不再需要全局唯一，就退回普通对象 + DI。
 
@@ -521,8 +520,8 @@ flowchart LR
 
 5. 类型编译期确定吗？
      └─ 确定 → 直接构造 / make_unique / 命名构造
-     └─ 不确定，种类少、没有稳定流程 → SimpleFactory
-     └─ 不确定，流程稳定、种类会涨 → Factory Method
+     └─ 不确定，种类少 → SimpleFactory
+     └─ 不确定，种类会涨 → Factory Method
 ```
 
 三个不应靠模式解决的问题：

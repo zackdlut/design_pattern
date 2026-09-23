@@ -8,76 +8,76 @@
 #include <vector>
 
 using design_pattern::creational::abstract_factory::AbstractFactory;
-using design_pattern::creational::abstract_factory::GuiFactorySelector;
-using design_pattern::creational::abstract_factory::GuiTheme;
-using design_pattern::creational::abstract_factory::MacGUIFactory;
-using design_pattern::creational::abstract_factory::WindowsGUIFactory;
+using design_pattern::creational::abstract_factory::ProVersionFactory;
+using design_pattern::creational::abstract_factory::StandardVersionFactory;
+using design_pattern::creational::abstract_factory::Version;
+using design_pattern::creational::abstract_factory::VersionFactorySelector;
 
 namespace {
 
-struct UiJob {
+struct ReleaseJob {
   std::string screen;
-  std::string theme; // "windows" -> Windows 族，"mac" -> Mac 族
+  std::string version; // "standard" -> Standard 族，"pro" -> Pro 族
 };
 
-std::unique_ptr<AbstractFactory> make_gui_factory(std::string_view theme) {
-  if (theme == "windows") {
-    return std::make_unique<WindowsGUIFactory>();
+std::unique_ptr<AbstractFactory> make_version_factory(std::string_view version) {
+  if (version == "standard") {
+    return std::make_unique<StandardVersionFactory>();
   }
-  if (theme == "mac") {
-    return std::make_unique<MacGUIFactory>();
+  if (version == "pro") {
+    return std::make_unique<ProVersionFactory>();
   }
-  throw std::invalid_argument("unknown theme: " + std::string(theme));
+  throw std::invalid_argument("unknown version: " + std::string(version));
 }
 
-GuiTheme parse_gui_theme(std::string_view name) {
-  if (name == "windows") {
-    return GuiTheme::Windows;
+Version parse_version(std::string_view name) {
+  if (name == "standard") {
+    return Version::Standard;
   }
-  if (name == "mac") {
-    return GuiTheme::Mac;
+  if (name == "pro") {
+    return Version::Pro;
   }
-  throw std::invalid_argument("unknown gui theme: " + std::string(name));
+  throw std::invalid_argument("unknown version: " + std::string(name));
 }
 
-// 客户端只依赖 AbstractFactory：换工厂即换整族控件，不会混用 Win 按钮 + Mac 复选框。
+// 客户端只依赖 AbstractFactory：换工厂即换整族产品，不会混用标准版 ProductA + 专业版 ProductB。
 void render_dialog(const AbstractFactory &factory, std::string_view screen) {
-  auto button = factory.createButton();
-  auto checkbox = factory.createCheckBox();
-  std::cout << "  [" << screen << "] " << button->paint() << " | "
-            << checkbox->paint() << "\n";
+  auto product_a = factory.createProductA();
+  auto product_b = factory.createProductB();
+  std::cout << "  [" << screen << "] " << product_a->paint() << " | "
+            << product_b->paint() << "\n";
 }
 
 } // namespace
 
 int main() {
-  std::cout << "=== 抽象工厂：设置页按主题渲染对话框，控件必须同族 ===\n";
+  std::cout << "=== 抽象工厂：按版本组装产品族，ProductA 与 ProductB 必须同族 ===\n";
 
-  const std::vector<UiJob> jobs{
-      {"login", "windows"},
-      {"settings", "mac"},
-      {"about", "windows"},
+  const std::vector<ReleaseJob> jobs{
+      {"login", "standard"},
+      {"settings", "pro"},
+      {"about", "standard"},
   };
 
   for (const auto &job : jobs) {
-    auto factory = make_gui_factory(job.theme);
-    std::cout << "[" << job.theme << "]\n";
+    auto factory = make_version_factory(job.version);
+    std::cout << "[" << job.version << "]\n";
     render_dialog(*factory, job.screen);
   }
 
   std::cout << "\n=== 同一抽象，换具体工厂即换产品族 ===\n";
-  WindowsGUIFactory windows;
-  MacGUIFactory mac;
-  const AbstractFactory &as_windows = windows;
-  const AbstractFactory &as_mac = mac;
-  render_dialog(as_windows, "via AbstractFactory& (windows)");
-  render_dialog(as_mac, "via AbstractFactory& (mac)");
+  StandardVersionFactory standard;
+  ProVersionFactory pro;
+  const AbstractFactory &as_standard = standard;
+  const AbstractFactory &as_pro = pro;
+  render_dialog(as_standard, "via AbstractFactory& (standard)");
+  render_dialog(as_pro, "via AbstractFactory& (pro)");
 
-  std::cout << "\n=== 对照：按配置枚举选工厂，渲染流程仍然只依赖抽象 ===\n";
-  for (std::string_view theme_name : {"windows", "mac"}) {
-    auto factory = GuiFactorySelector::create(parse_gui_theme(theme_name));
-    std::cout << "  config=" << theme_name << "\n";
-    render_dialog(*factory, "via GuiFactorySelector");
+  std::cout << "\n=== 对照：按配置枚举选工厂，使用流程仍然只依赖抽象 ===\n";
+  for (std::string_view version_name : {"standard", "pro"}) {
+    auto factory = VersionFactorySelector::create(parse_version(version_name));
+    std::cout << "  config=" << version_name << "\n";
+    render_dialog(*factory, "via VersionFactorySelector");
   }
 
   return 0;

@@ -33,7 +33,7 @@ flowchart LR
 **不适合**：
 
 - 两个必填参数就能造出来 → 直接构造
-- 一次要造一组互相匹配的对象（按钮 + 复选框）→ 那是抽象工厂
+- 一次要造一组互相匹配的对象（ProductA + ProductB）→ 那是抽象工厂
 - 只是不想在客户端写 `new`，对象一步就能造完 → 工厂方法或简单工厂
 
 ## 共同骨架
@@ -96,7 +96,7 @@ flowchart TD
   Q2 -->|不要，只是可选字段多| F[链式 HttpRequestBuilder]
 ```
 
-和 [工厂方法](factory_method.md) 的粒度不同：工厂方法一次 `createProduct()` 交出完整对象；建造者把创建拆成 `setMethod` / `setUrl` / `setHeader` / `setBody`。和 [抽象工厂](abstract_factory.md) 也不同：抽象工厂一次造**一族**对象；建造者一次造**一个**复杂对象。
+和 [工厂方法](factory_method.md) 的粒度不同：工厂方法一次 `create()` 交出完整对象；建造者把创建拆成 `setMethod` / `setUrl` / `setHeader` / `setBody`。和 [抽象工厂](abstract_factory.md) 也不同：抽象工厂一次造**一族**对象；建造者一次造**一个**复杂对象。
 
 ### 为什么 `build()` 在具体建造者上，不在 `Builder` 里
 
@@ -176,7 +176,7 @@ flowchart TD
 
 ## 1. 建造者：`Builder` / `Director` / 具体建造者
 
-GoF 原意。稳定配方在 `Director`，变化点在具体建造者怎么把每一步写进自己的产品。这点和工厂方法的 `Creator::process()` 同类：流程写一次，变化推迟到子类；工厂方法变化的是**造哪一种完整对象**，建造者变化的是**同一步骤对应哪种表示**。
+GoF 原意。稳定配方在 `Director`，变化点在具体建造者怎么把每一步写进自己的产品。工厂方法一次 `create()` 交出一种完整对象，使用留在调用方；建造者把创建拆成步骤。工厂方法变化的是**造哪一种完整对象**，建造者变化的是**同一步骤对应哪种表示**。
 
 ### 原理
 
@@ -361,11 +361,11 @@ HttpRequest health = HttpRequestBuilder().url("/health").build();
 ```mermaid
 flowchart LR
   subgraph FM[工厂方法]
-    C1[Creator] -->|一下| P1[一个完整 Product]
+    C1[Factory] -->|一下| P1[一个完整 Product]
   end
   subgraph AF[抽象工厂]
-    F2[AbstractFactory] --> B[Button]
-    F2 --> X[CheckBox]
+    F2[AbstractFactory] --> B[ProductA]
+    F2 --> X[ProductB]
   end
   subgraph BD[建造者]
     D[Director] --> S[分步]

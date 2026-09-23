@@ -12,20 +12,15 @@ std::string ConcreteProductB::use() const { return "ConcreteProductB use"; }
 
 std::string ConcreteProductB::show() const { return "ConcreteProductB show"; }
 
-std::string Creator::process() const {
-  auto product = createProduct();
-  return product->use() + " | " + product->show();
-}
-
-std::unique_ptr<Product> ConcreteCreatorA::createProduct() const {
+std::unique_ptr<Product> ConcreteFactoryA::create() const {
   return std::make_unique<ConcreteProductA>();
 }
 
-std::unique_ptr<Product> ConcreteCreatorB::createProduct() const {
+std::unique_ptr<Product> ConcreteFactoryB::create() const {
   return std::make_unique<ConcreteProductB>();
 }
 
-std::unique_ptr<Product> SimpleFactory::createProduct(ProductType type) {
+std::unique_ptr<Product> SimpleFactory::create(ProductType type) {
   switch (type) {
   case ProductType::A:
     return std::make_unique<ConcreteProductA>();

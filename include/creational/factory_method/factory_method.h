@@ -30,37 +30,36 @@ public:
   std::string show() const override;
 };
 
-class Creator {
+class Factory {
 public:
-  Creator() = default;
-  virtual ~Creator() = default;
-  Creator(const Creator &) = delete;
-  Creator &operator=(const Creator &) = delete;
-  Creator(Creator &&) = delete;
-  Creator &operator=(Creator &&) = delete;
+  Factory() = default;
+  virtual ~Factory() = default;
+  Factory(const Factory &) = delete;
+  Factory &operator=(const Factory &) = delete;
+  Factory(Factory &&) = delete;
+  Factory &operator=(Factory &&) = delete;
 
-  // 稳定业务流程：变化点只在子类的 createProduct()。
-  std::string process() const;
-  virtual std::unique_ptr<Product> createProduct() const = 0;
+  // 只负责创建。造哪一种由子类的 create() 决定，使用留在调用方。
+  virtual std::unique_ptr<Product> create() const = 0;
 };
 
-class ConcreteCreatorA final : public Creator {
+class ConcreteFactoryA final : public Factory {
 public:
-  std::unique_ptr<Product> createProduct() const override;
+  std::unique_ptr<Product> create() const override;
 };
 
-class ConcreteCreatorB final : public Creator {
+class ConcreteFactoryB final : public Factory {
 public:
-  std::unique_ptr<Product> createProduct() const override;
+  std::unique_ptr<Product> create() const override;
 };
 
 enum class ProductType { A, B };
 
-// 对照：简单工厂。不继承 Creator，没有 process()，加产品必须改这个函数。
+// 对照：简单工厂。不继承 Factory，加产品必须改这个函数。
 class SimpleFactory final {
 public:
   SimpleFactory() = delete;
-  static std::unique_ptr<Product> createProduct(ProductType type);
+  static std::unique_ptr<Product> create(ProductType type);
 };
 
 }  // namespace design_pattern::creational::factory_method

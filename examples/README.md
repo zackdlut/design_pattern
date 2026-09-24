@@ -2,7 +2,7 @@
 
 每个模式对应一个可执行程序，放在 `examples/<category>/<pattern>/main.cpp`。
 
-- **已实现**：`singleton`、`factory_method`、`abstract_factory`、`builder`、`prototype`、`adapter`、`decorator`、`proxy`、`facade`、`composite`、`bridge`、`flyweight`、`strategy`、`observer`、`template_method` 是贴近真实场景的客户端。
+- **已实现**：`singleton`、`factory_method`、`abstract_factory`、`builder`、`prototype`、`adapter`、`decorator`、`proxy`、`facade`、`composite`、`bridge`、`flyweight`、`strategy`、`observer`、`command`、`template_method` 是贴近真实场景的客户端。
 - **未实现**：其余模式只提供程序骨架（可编译、打印提示、注释里写典型用法）。实现对应头文件后，把骨架里的 `TODO` 换成真实调用即可。
 
 ## 构建与运行
@@ -25,6 +25,7 @@ cmake --build build --target examples
 ./build/examples/example_strategy
 ./build/examples/example_observer
 ./build/examples/example_template_method
+./build/examples/example_command
 ```
 
 关闭示例：

@@ -1,21 +1,46 @@
 #include "behavioral/command/command.h"
 
 #include <iostream>
+#include <memory>
+#include <stdexcept>
+#include <string>
 
-// TODO: 实现 Command 后，在这里写客户端用法。
-//
-// 典型客户端：
-//   1. 把「开灯」封装成 Command 对象
-//   2. Invoker（遥控器）只调 execute / undo
-//   3. 可排队、可撤销、可日志重放
+using design_pattern::behavioral::command::AppendCommand;
+using design_pattern::behavioral::command::Command;
+using design_pattern::behavioral::command::CommandQueue;
+using design_pattern::behavioral::command::Invoker;
+using design_pattern::behavioral::command::LogCommand;
+using design_pattern::behavioral::command::TextBuffer;
 
 int main() {
-  using namespace design_pattern::behavioral::command;
+  std::cout << "=== Invoker：按按钮执行，再 undo ===\n";
+  TextBuffer buffer;
+  Invoker remote(std::make_unique<AppendCommand>(&buffer, "开灯"));
+  remote.executeCommand();
+  std::cout << "  缓冲: " << buffer.text() << "\n";
+  remote.undoCommand();
+  std::cout << "  撤销后: " << buffer.text() << "\n";
 
-  // remote.set_command(std::make_unique<LightOnCommand>(light));
-  // remote.press();
-  // remote.undo();
+  std::cout << "\n=== CommandQueue：宏命令顺序执行、逆序撤销 ===\n";
+  TextBuffer macro_buffer;
+  std::string log;
+  CommandQueue macro;
+  macro.addCommand(std::make_unique<AppendCommand>(&macro_buffer, "Hello"));
+  macro.addCommand(std::make_unique<LogCommand>(&log, "macro done"));
+  macro.execute();
+  std::cout << "  缓冲: " << macro_buffer.text() << "\n";
+  std::cout << "  日志:\n" << log << "\n";
+  macro.undo();
+  std::cout << "  撤销后缓冲: " << macro_buffer.text() << "\n";
+  std::cout << "  撤销后日志: '" << log << "'\n";
 
-  std::cout << "[Command] 客户端骨架：实现模式后在此补充真实用法。\n";
+  std::cout << "\n=== 空命令在入口拒绝 ===\n";
+  try {
+    Invoker missing(std::unique_ptr<Command>{nullptr});
+    (void)missing;
+  } catch (const std::invalid_argument &error) {
+    std::cout << "  " << error.what() << "\n";
+  }
+
   return 0;
 }

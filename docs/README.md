@@ -2,7 +2,7 @@
 
 按 GoF 分类记录学习笔记。每个文件对应一个模式，内容由你自己填写。
 
-客户端示例在 [`examples/`](../examples/README.md)：未实现的模式是程序骨架，已实现的 `singleton` / `factory_method` / `abstract_factory` / `builder` / `prototype` / `adapter` / `decorator` / `proxy` / `facade` / `composite` / `bridge` / `flyweight` 是真实用法。
+客户端示例在 [`examples/`](../examples/README.md)：未实现的模式是程序骨架，已实现的 `singleton` / `factory_method` / `abstract_factory` / `builder` / `prototype` / `adapter` / `decorator` / `proxy` / `facade` / `composite` / `bridge` / `flyweight` / `strategy` 是真实用法。
 
 ## 创建型（Creational）
 
